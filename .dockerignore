@@ -1,0 +1,13 @@
+# Binaries for programs and dependencies
+*.exe
+*.exe~
+*.dll
+*.dylib
+*.so
+*.dmg
+
+# Logs
+*.log
+
+# OS-specific files
+.DS_Store

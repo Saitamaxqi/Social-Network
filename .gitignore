@@ -1,0 +1,4 @@
+.idea
+forum.sqlite3
+web/storage
+**/*.Identifier
