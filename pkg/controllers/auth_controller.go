@@ -60,13 +60,13 @@ func Register(w http.ResponseWriter, r *http.Request) {
         Username:    username,
         Age:        age,
         Gender:     r.FormValue("gender"),
-        FirstName:  r.FormValue("firstName"),
-        LastName:   r.FormValue("lastName"),
+        FirstName:  r.FormValue("first_name"),
+        LastName:   r.FormValue("last_name"),
         Email:      r.FormValue("email"),
         Password:   r.FormValue("password"),
         Type:       consts.USER,
-        ProfileType: r.FormValue("profileType"),
-        AboutMe:    r.FormValue("aboutMe"),
+        ProfileType: r.FormValue("profile_type"),
+        AboutMe:    r.FormValue("about_me"),
     }
 
     // Create the user first to get an ID

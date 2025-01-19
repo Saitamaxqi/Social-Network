@@ -28,7 +28,7 @@ admin := &models.User{
     Gender:     "male",
     FirstName:  "Admin",
     LastName:   "User",
-    Email:      "admin@formhub.com",
+    Email:      "admin@social.com",
     Password:   "admin",
     Type:       "admin",
     Avatar:     sql.NullString{String: "", Valid: false},
