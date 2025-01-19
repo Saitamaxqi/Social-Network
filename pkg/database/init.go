@@ -1,6 +1,7 @@
 package database
 
 import (
+	"database/sql"
 	"forum/pkg/env"
 	"forum/pkg/models"
 	"log"
@@ -22,15 +23,19 @@ func Init() {
 	}
 // fix this to match the new database
 admin := &models.User{
-    Username:  "admin",
-    Age:       30,
-    Gender:    "male",
-    FirstName: "Admin",
-    LastName:  "User",
-    Email:     "admin@formhub.com",
-    Password:  "admin",
-    Type:      "admin",
+    Username:    "admin",
+    Age:        30,
+    Gender:     "male",
+    FirstName:  "Admin",
+    LastName:   "User",
+    Email:      "admin@formhub.com",
+    Password:   "admin",
+    Type:       "admin",
+    Avatar:     sql.NullString{String: "", Valid: false},
+    ProfileType: "private",
+    AboutMe:    "System Administrator",
 }
+
 
 
 	admin.Create()

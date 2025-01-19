@@ -43,30 +43,52 @@ func Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func Register(w http.ResponseWriter, r *http.Request) {
-	age, err := strconv.Atoi(r.FormValue("age"))
-	if err != nil {
-		http.Error(w, "Invalid age", http.StatusBadRequest)
-		return
-	}
+    age, err := strconv.Atoi(r.FormValue("age"))
+    if err != nil {
+        http.Error(w, "Invalid age", http.StatusBadRequest)
+        return
+    }
 
-	user := &models.User{
-		Username:  r.FormValue("username"),
-		Age:       age,
-		Gender:    r.FormValue("gender"),
-		FirstName: r.FormValue("firstName"),
-		LastName:  r.FormValue("lastName"),
-		Email:     r.FormValue("email"),
-		Password:  r.FormValue("password"),
-		Type:      consts.USER,
-	}
+    // Generate username if not provided
+    username := r.FormValue("username")
+    if username == "" {
+        username = r.FormValue("firstName") + "_" + r.FormValue("lastName")
+    }
 
-	if err := user.Create(); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+    // Create new user with all fields
+    user := &models.User{
+        Username:    username,
+        Age:        age,
+        Gender:     r.FormValue("gender"),
+        FirstName:  r.FormValue("firstName"),
+        LastName:   r.FormValue("lastName"),
+        Email:      r.FormValue("email"),
+        Password:   r.FormValue("password"),
+        Type:       consts.USER,
+        ProfileType: r.FormValue("profileType"),
+        AboutMe:    r.FormValue("aboutMe"),
+    }
 
-	login(w, r, user)
+    // Create the user first to get an ID
+    if err := user.Create(); err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+
+    // Handle avatar upload if provided
+    file, header, err := r.FormFile("avatar")
+    if err == nil && file != nil {
+        defer file.Close()
+        err = user.StoreAvatarFile(file, header)
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+    }
+
+    login(w, r, user)
 }
+
 func Logout(w http.ResponseWriter, r *http.Request) {
 	
 	user, err := AuthUser(r)

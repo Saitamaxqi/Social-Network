@@ -7,7 +7,7 @@ import (
 func LoginRequest(next http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         rules := Rules{
-            "identifier": {"required", "exists:users,username,email"},
+            "identifier": {"required"},
             "password":   {"required"},
         }
         if err := rules.Validate(r); err != nil {

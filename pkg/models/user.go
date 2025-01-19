@@ -1,8 +1,13 @@
 package models
 
 import (
+	"database/sql"
 	"errors"
+	"fmt"
 	"forum/pkg/consts"
+	"forum/pkg/util"
+	"mime/multipart"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -10,26 +15,28 @@ import (
 )
 
 type User struct {
-    ID        int    `json:"id"`
-    Username  string `json:"username"`
-    Age       int    `json:"age"`
-    Gender    string `json:"gender"`
-    FirstName string `json:"first_name"`
-    LastName  string `json:"last_name"`
-    Email     string `json:"email"`
-    Password  string `json:"password"`
-    Type      string `json:"type"`
-    Requested bool   `json:"requested"`
-
-    CreatedAt time.Time `json:"created_at"`
-    UpdatedAt time.Time `json:"updated_at"`
-
-    SessionUUID string `json:"session_uuid"`
+    ID          int            `json:"id"`
+    Username    string         `json:"username"`
+    Age         int            `json:"age"`
+    Gender      string         `json:"gender"`
+    FirstName   string         `json:"first_name"`
+    LastName    string         `json:"last_name"`
+    Email       string         `json:"email"`
+    Password    string         `json:"password"`
+    Type        string         `json:"type"`
+    Requested   bool           `json:"requested"`
+    Avatar      sql.NullString `json:"avatar"`
+    ProfileType string         `json:"profile_type"`
+    AboutMe     string         `json:"about_me"`
+    CreatedAt   time.Time      `json:"created_at"`
+    UpdatedAt   time.Time      `json:"updated_at"`
+    SessionUUID string         `json:"session_uuid"`
 }
 
 
+
 func (u *User) CreateTable() error {
-	_, err := DB.Exec(`CREATE TABLE IF NOT EXISTS users (
+    _, err := DB.Exec(`CREATE TABLE IF NOT EXISTS users (
         id                  INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         username            VARCHAR(50) NOT NULL UNIQUE,
         age                 INTEGER NOT NULL,
@@ -40,12 +47,16 @@ func (u *User) CreateTable() error {
         password            VARCHAR NOT NULL,
         type                VARCHAR NOT NULL,
         requested           BOOLEAN DEFAULT FALSE,
+        avatar              VARCHAR(255),
+        profile_type        VARCHAR(50) DEFAULT 'public',
+        about_me            TEXT,
         created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
-			CONSTRAINT unique_email UNIQUE (email)
-	)`)
-	return err
+        CONSTRAINT unique_email UNIQUE (email)
+    )`)
+    return err
 }
+
 
 func (u *User) Index() ([]Model, error) {
 	rows, err := DB.Query(`SELECT * FROM users WHERE type != ?`, consts.ADMIN)
@@ -93,9 +104,9 @@ func (u *User) Create() error {
 
     u.Email = strings.ToLower(u.Email)
 
-    result, err := DB.Exec(`INSERT INTO users (username, age, gender, first_name, last_name, email, password, type) 
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
-                            u.Username, u.Age, u.Gender, u.FirstName, u.LastName, u.Email, u.Password, u.Type)
+    result, err := DB.Exec(`INSERT INTO users (username, age, gender, first_name, last_name, email, password, type, avatar, profile_type, about_me) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
+                            u.Username, u.Age, u.Gender, u.FirstName, u.LastName, u.Email, u.Password, u.Type, u.Avatar, u.ProfileType, u.AboutMe)
     if err != nil {
         return err
     }
@@ -110,36 +121,39 @@ func (u *User) Create() error {
 }
 
 
+
 func (u *User) Update() error {
-	if !u.Exists() {
-		return errors.New("user does not exist")
-	}
+    if !u.Exists() {
+        return errors.New("user does not exist")
+    }
 
-	if !u.ValidType() {
-		return errors.New("invalid user type")
-	}
+    if !u.ValidType() {
+        return errors.New("invalid user type")
+    }
 
-	err := u.HashPassword()
-	if err != nil {
-		return err
-	}
+    err := u.HashPassword()
+    if err != nil {
+        return err
+    }
 
-	u.Email = strings.ToLower(u.Email)
+    u.Email = strings.ToLower(u.Email)
 
-	// Check if username and email are taken by another user
-	var id int
-	err = DB.QueryRow(`SELECT id FROM users WHERE (username = ? OR email = ?) AND id != ?`, u.Username, u.Email, u.ID).Scan(&id)
-	if err == nil {
-		return errors.New("username or email is already taken")
-	}
+    var id int
+    err = DB.QueryRow(`SELECT id FROM users WHERE (username = ? OR email = ?) AND id != ?`, u.Username, u.Email, u.ID).Scan(&id)
+    if err == nil {
+        return errors.New("username or email is already taken")
+    }
 
-	_, err = DB.Exec(`UPDATE users SET username = ?, email = ?, password = ?, type = ?, requested = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, u.Username, u.Email, u.Password, u.Type, u.Requested, u.ID)
-	if err != nil {
-		return err
-	}
+    _, err = DB.Exec(`UPDATE users SET 
+        username = ?, email = ?, password = ?, type = ?, requested = ?, 
+        avatar = ?, profile_type = ?, about_me = ?, 
+        updated_at = CURRENT_TIMESTAMP WHERE id = ?`, 
+        u.Username, u.Email, u.Password, u.Type, u.Requested,
+        u.Avatar, u.ProfileType, u.AboutMe, u.ID)
 
-	return err
+    return err
 }
+
 
 func (u *User) Delete() error {
 	if !u.Exists() {
@@ -157,7 +171,7 @@ func (u *User) Refresh() error {
 
 	err := DB.QueryRow(`SELECT * FROM users WHERE id = ?`, u.ID).Scan(
 		&u.ID, &u.Username, &u.Age, &u.Gender, &u.FirstName, &u.LastName, 
-		&u.Email, &u.Password, &u.Type, &u.Requested, &u.CreatedAt, &u.UpdatedAt)	
+		&u.Email, &u.Password, &u.Type, &u.Requested,&u.Avatar,&u.ProfileType,&u.AboutMe, &u.CreatedAt, &u.UpdatedAt)	
 	if err != nil {
 		return errors.New("user does not exist")
 	}
@@ -199,17 +213,10 @@ func GetUserByNicknameOrEmail(identifier string) (*User, error) {
     user := &User{}
     identifier = strings.TrimSpace(strings.ToLower(identifier))
     err := DB.QueryRow(`SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?`, identifier, identifier).
-        Scan(&user.ID, &user.Username, &user.Age, &user.Gender, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Type, &user.Requested, &user.CreatedAt, &user.UpdatedAt)
+        Scan(&user.ID, &user.Username, &user.Age, &user.Gender, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Type, &user.Requested,&user.Avatar,&user.ProfileType,&user.AboutMe, &user.CreatedAt, &user.UpdatedAt)
     return user, err
 }
 
-
-// func GetUserByUsername(username string) (*User, error) {
-// 	user := &User{}
-// 	username = strings.TrimSpace(strings.ToLower(username))
-// 	err := DB.QueryRow(`SELECT * FROM users WHERE username LIKE ?`, username).Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.Type, &user.Requested, &user.CreatedAt, &user.UpdatedAt)
-// 	return user, err
-// }
 
 func (u *User) HideDetails() {
 	u.Password = ""
@@ -437,3 +444,37 @@ func (u *User) Notifications() ([]*Notification, error) {
 
 	return notifications, nil
 }
+
+func (u *User) StoreAvatarFile(f multipart.File, h *multipart.FileHeader) error {
+    err := u.DeleteAvatarFile()
+    if err != nil {
+        return err
+    }
+
+    name := fmt.Sprintf("avatar_%d_%d%s", u.ID, time.Now().Unix(), filepath.Ext(h.Filename))
+    file := util.NewFile(f, h, name)
+
+    err = file.Store()
+    if err != nil {
+        return err
+    }
+
+    u.Avatar = sql.NullString{String: "/" + file.Path, Valid: true}
+    err = u.Update()
+
+    return err
+}
+
+func (u *User) DeleteAvatarFile() error {
+    if !u.Avatar.Valid {
+        return nil
+    }
+
+    err := util.DeleteFile(u.Avatar.String[1:])
+
+    u.Avatar = sql.NullString{String: "", Valid: false}
+    err = u.Update()
+
+    return err
+}
+
