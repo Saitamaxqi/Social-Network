@@ -63,9 +63,12 @@ func RegisterAPIs() {
 	WEB("/callback/github", controllers.ThirdPartyController, requests.DefaultRequest, middlewares.DefaultAPIMiddleware) // Github callback
 	// Web routes (Skip)
 	WEB("/", controllers.HomeController, requests.DefaultRequest, middlewares.CORSMiddleware) // Index
-	// Websocket Routes
-	// GET("/ws", controllers.WebSocketHandler, requests.DefaultRequest, middlewares.LoggingMiddleware)
+    //chat routes
 	GET("/chats", controllers.RecentChatsController, requests.DefaultRequest, middlewares.AuthMiddleware)
 	POST("/chats/{id}", controllers.PostPrivateMessageController, requests.DefaultRequest, middlewares.AuthMiddleware)
 	GET("/chats/{id}", controllers.GetPrivateMessagesController, requests.DefaultRequest, middlewares.AuthMiddleware)
+	//follow routes
+	POST("/follow", controllers.FollowController, requests.DefaultRequest, middlewares.AuthMiddleware)
+	DELETE("/follow/{id}", controllers.FollowController, requests.DefaultRequest, middlewares.AuthMiddleware)
+	PUT("/follow/{id}", controllers.FollowController, requests.DefaultRequest, middlewares.AuthMiddleware)
 }
