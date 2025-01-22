@@ -44,7 +44,7 @@ func RegisterAPIs() {
 	PUT("/requests/{id}", controllers.ModeratorController, requests.DefaultRequest, middlewares.AdminMiddleware)    // Approve moderator request
 	DELETE("/requests/{id}", controllers.ModeratorController, requests.DefaultRequest, middlewares.AdminMiddleware) // Reject moderator request
 	// Profile routes(Done)
-	GET("/profile", controllers.ProfileController, requests.DefaultRequest, middlewares.AuthMiddleware) // Show
+	GET("/profile/{id}", controllers.ProfileController, requests.DefaultRequest, middlewares.AuthMiddleware) // Show
 	PUT("/profile", controllers.ProfileController, requests.ProfileRequest, middlewares.AuthMiddleware) // Update
 	// Notification routes(Done)
 	GET("/notifications", controllers.NotificationController, requests.DefaultRequest, middlewares.AuthMiddleware)      // Index

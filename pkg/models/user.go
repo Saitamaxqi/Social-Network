@@ -478,3 +478,54 @@ func (u *User) DeleteAvatarFile() error {
     return err
 }
 
+// Add method to check profile visibility
+func (u *User) IsProfileVisibleTo(viewerID int) (bool, error) {
+    // Owner can always see their profile
+    if u.ID == viewerID {
+        return true, nil
+    }
+    
+    // Public profiles are visible to everyone
+    if u.ProfileType == "public" {
+        return true, nil
+    }
+    
+    // For private profiles, check if viewer is a follower
+    isFollower, err := u.IsFollowedBy(viewerID)
+    return isFollower, err
+}
+
+func (u *User) IsFollowedBy(userID int) (bool, error) {
+    var exists bool
+    err := DB.QueryRow(`
+        SELECT EXISTS (
+            SELECT 1 FROM follows 
+            WHERE follower_id = ? AND following_id = ? AND status = 'accepted'
+        )`, userID, u.ID).Scan(&exists)
+    return exists, err
+}
+
+// Add method to get user activity
+func (u *User) GetActivity() (map[string]interface{}, error) {
+    posts, err := u.Posts()
+    if err != nil {
+        return nil, err
+    }
+
+    followers, err := u.GetFollowers()
+    if err != nil {
+        return nil, err
+    }
+
+    following, err := u.GetFollowing()
+    if err != nil {
+        return nil, err
+    }
+
+    return map[string]interface{}{
+        "posts":     posts,
+        "followers": followers,
+        "following": following,
+    }, nil
+}
+
