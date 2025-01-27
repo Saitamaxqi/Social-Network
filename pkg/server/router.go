@@ -22,7 +22,7 @@ func StartRouter() {
 	})))
 
 	// Web fileserver
-	Router.Handle("/web/", http.StripPrefix("/web", http.FileServer(http.Dir("./web"))))
+	Router.Handle("/web-next/", http.StripPrefix("/web-next", http.FileServer(http.Dir("./web-next"))))
 	// hnadle ws function
 	Router.HandleFunc("/ws", controllers.WebSocketHandler)
     controllers.InitHub()
