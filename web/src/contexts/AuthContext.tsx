@@ -27,7 +27,7 @@ interface AuthContextType {
   checkAuth: () => Promise<void>;
 }
 
-export var Currentuser = null;
+export let Currentuser = null;
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {

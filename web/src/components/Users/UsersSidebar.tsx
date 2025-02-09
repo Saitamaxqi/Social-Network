@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Currentuser } from '@/contexts/AuthContext';
+import Image from 'next/image';
+
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ChatUser {
@@ -21,7 +22,7 @@ interface ChatsResponse {
 
 export default function UsersSidebar() {
   const [chatData, setChatData] = useState<ChatsResponse | null>(null);
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!user) return;
@@ -61,10 +62,12 @@ export default function UsersSidebar() {
                 <div className="relative">
                   <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center">
                     {user.avatar.Valid ? (
-                      <img
+                      <Image
                         src={user.avatar.String}
                         alt={user.username}
-                        className="w-8 h-8 rounded-full object-cover"
+                        width={32}
+                        height={32}
+                        className="rounded-full object-cover"
                       />
                     ) : (
                       <span className="text-white text-sm">{user.username[0].toUpperCase()}</span>
