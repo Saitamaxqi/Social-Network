@@ -19,11 +19,17 @@ export async function GET(request: NextRequest) {
     });
 
     return nextResponse;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Logout error:', error);
+    if (axios.isAxiosError(error)) {
+      return NextResponse.json(
+        { message: error.response?.data?.message || 'Logout failed' },
+        { status: error.response?.status || 500 }
+      );
+    }
     return NextResponse.json(
-      { message: error.response?.data?.message || 'Logout failed' },
-      { status: error.response?.status || 500 }
+      { message: 'Logout failed' },
+      { status: 500 }
     );
   }
 }

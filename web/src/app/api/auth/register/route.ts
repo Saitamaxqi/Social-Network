@@ -17,11 +17,17 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json(response.data);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Registration error:', error);
+    if (axios.isAxiosError(error)) {
+      return NextResponse.json(
+        { message: error.response?.data?.message || 'Registration failed' },
+        { status: error.response?.status || 500 }
+      );
+    }
     return NextResponse.json(
-      { message: error.response?.data?.message || 'Registration failed' },
-      { status: error.response?.status || 500 }
+      { message: 'Registration failed' },
+      { status: 500 }
     );
   }
 }

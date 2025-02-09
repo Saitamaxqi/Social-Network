@@ -28,11 +28,17 @@ export async function POST(request: NextRequest) {
     }
 
     return nextResponse;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Login error:', error);
+    if (axios.isAxiosError(error)) {
+      return NextResponse.json(
+        { message: error.response?.data?.message || 'Login failed' },
+        { status: error.response?.status || 500 }
+      );
+    }
     return NextResponse.json(
-      { message: error.response?.data?.message || 'Login failed' },
-      { status: error.response?.status || 500 }
+      { message: 'Login failed' },
+      { status: 500 }
     );
   }
 }

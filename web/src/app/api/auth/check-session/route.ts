@@ -3,19 +3,27 @@ import axios from 'axios';
 
 export async function GET(request: NextRequest) {
   try {
-    const response = await axios.get('http://localhost:8080/api/check-session', {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+    const response = await axios.get(`${apiUrl}/check-session`, {
       headers: {
         Cookie: request.headers.get('cookie') || '',
+        'Content-Type': 'application/json'
       },
-      withCredentials: true,
+      withCredentials: true
     });
 
     return NextResponse.json(response.data);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Session check error:', error);
+    if (axios.isAxiosError(error)) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: error.response?.status || 500 }
+      );
+    }
     return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: error.response?.status || 500 }
+      { error: 'Internal Server Error' },
+      { status: 500 }
     );
   }
 }
