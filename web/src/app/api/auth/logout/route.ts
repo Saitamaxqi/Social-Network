@@ -3,19 +3,28 @@ import axios from 'axios';
 
 export async function GET(request: NextRequest) {
   try {
-    const response = await axios.get('http://localhost:8080/api/logout', {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+    const response = await axios.get(`${apiUrl}/logout`, {
       headers: {
         Cookie: request.headers.get('cookie') || '',
+        'Content-Type': 'application/json'
       },
       withCredentials: true,
     });
 
-    const nextResponse = NextResponse.json(response.data);
+    const nextResponse = NextResponse.json({ response });
     
-    // Clear the session cookie
-    nextResponse.cookies.set('session', '', {
-      path: '/',
-      expires: new Date(0),
+    // Clear all cookies
+    const cookies = request.headers.get('cookie')?.split(';') || [];
+    cookies.forEach(cookie => {
+      const [name] = cookie.split('=');
+      if (name) {
+        nextResponse.cookies.set(name.trim(), '', {
+          path: '/',
+          expires: new Date(0),
+          maxAge: 0
+        });
+      }
     });
 
     return nextResponse;
