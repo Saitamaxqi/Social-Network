@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface Post {
@@ -24,28 +24,12 @@ interface PostProps {
   categoryId?: string;
 }
 
-export default function Post({ post, categoryId }: PostProps) {
+export default function Post({ categoryId }: PostProps) {
   const [posts, setPosts] = useState<Post[]>([]);
-  const [categories, setCategories] = useState([]);
-  const [filterCategories, setFilterCategories] = useState([]);
+  const [filterCategories, setFilterCategories] = useState<Array<{ id: string; name: string }>>([]);
   const router = useRouter();
 
-  useEffect(() => {
-    fetchPosts();
-    fetchCategories();
-  }, [categoryId]);
-
-  const fetchPosts = async () => {
-    try {
-      const response = await fetch('/api/posts' + (categoryId ? `?category=${categoryId}` : ''));
-      const data = await response.json();
-      setPosts(data);
-    } catch (error) {
-      console.error('Error fetching posts:', error);
-    }
-  };
-
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const response = await fetch('/api/categories');
       const data = await response.json();
@@ -53,11 +37,28 @@ export default function Post({ post, categoryId }: PostProps) {
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
-  };
+  }, []);
 
-  const handleCategoryClick = (categoryId: string) => {
-    router.push(`/posts?category=${categoryId}`);
-  };
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const response = await fetch('/api/posts' + (categoryId ? `?category=${categoryId}` : ''));
+        const data = await response.json();
+        setPosts(data);
+      } catch (error) {
+        console.error('Error fetching posts:', error);
+      }
+    };
+
+    fetchPosts();
+    fetchCategories();
+  }, [categoryId, fetchCategories]);
+
+  const handleCategoryClick = useCallback((categoryId: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('category', categoryId);
+    router.push(url.pathname + url.search);
+  }, [router]);
 
   const timeSince = (date: string) => {
     const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
@@ -75,13 +76,17 @@ export default function Post({ post, categoryId }: PostProps) {
     return Math.floor(seconds) + " seconds";
   };
 
+  if (!posts.length && !filterCategories.length) {
+    return <div className="container mx-auto px-4 py-8">Loading...</div>;
+  }
+
   return (
     <div className="container mx-auto px-4">
       <h2 className="text-2xl font-bold mb-6">Posts</h2>
       
       {/* Category filters */}
       <div className="flex gap-2 mb-6 flex-wrap justify-center">
-        {filterCategories.map((category: any) => (
+        {filterCategories.map((category) => (
           <button
             key={category.id}
             onClick={() => handleCategoryClick(category.id)}
