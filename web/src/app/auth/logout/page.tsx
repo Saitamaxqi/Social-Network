@@ -10,8 +10,13 @@ export default function LogoutPage() {
 
   useEffect(() => {
     const performLogout = async () => {
-      await logout();
-      router.push('/auth/login');
+      try {
+        await logout();
+        // Navigation is handled in the logout function
+      } catch (error) {
+        console.error('Logout error:', error);
+        // Navigation is handled in the logout function
+      }
     };
 
     performLogout();

@@ -89,21 +89,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      const response = await fetch('../api/auth/logout', {
+      const response = await fetch('/api/auth/logout', {
+        method: 'GET',
         credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
       if (!response.ok) {
-        throw new Error('Logout failed');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Logout failed');
       }
 
       // Clear the user state
       setUser(null);
       Currentuser = null;
-      // Clear cookie
-      document.cookie = 'session=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;';
+
+      // Force reload to clear all state
+      window.location.href = '/auth/login';
     } catch (error) {
       console.error('Logout error:', error);
+      // Even if logout fails on the server, clear local state
+      setUser(null);
+      Currentuser = null;
+      window.location.href = '/auth/login';
       throw error;
     }
   };
