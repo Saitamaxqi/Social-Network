@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     
     const response = await axios.post(
-      'http://localhost:8080/api/register',
+      `${process.env.NEXT_PUBLIC_API_URL}/register`,
       formData,
       {
         headers: {
