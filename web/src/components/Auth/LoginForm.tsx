@@ -79,7 +79,7 @@ export default function LoginForm() {
 
         <div className="text-center">
           <Link
-            href="/register"
+            href="/auth/register"
             className="text-sm text-blue-400 hover:text-blue-500"
           >
             Don&apos;t have an account? Sign up
