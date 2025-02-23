@@ -18,6 +18,8 @@ export default function NavigationSidebar() {
   const routes: NavigableRoute[] = [
     { path: '/', label: 'Home', requiresAuth: false },
     { path: '/posts', label: 'Posts', requiresAuth: false },
+    { path: '/createpost', label: 'CreatePost', requiresAuth: true },
+    { path: '/notifications', label: 'Notifications', requiresAuth: true },
     { path: '/profile', label: 'Profile', requiresAuth: true },
     { path: '/auth/logout', label: 'Logout', requiresAuth: true },
   ];
