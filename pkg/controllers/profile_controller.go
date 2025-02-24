@@ -1,53 +1,113 @@
 package controllers
 
 import (
+	"forum/pkg/models"
 	"net/http"
+	"strconv"
 )
 
 func ProfileController(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		ShowProfile(w, r)
+		GetProfile(w, r)
 	case "PUT":
 		UpdateProfile(w, r)
 	}
 }
 
-func ShowProfile(w http.ResponseWriter, r *http.Request) {
-	user, err := AuthUser(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
+func GetProfile(w http.ResponseWriter, r *http.Request) {
+    currentUser, _ := AuthUser(r)
+    
+    // Get profile user ID from URL
+    profileID, err := strconv.Atoi(r.PathValue("id"))
+    if err != nil {
+        http.Error(w, "Invalid profile ID", http.StatusBadRequest)
+        return
+    }
 
-	user.HideDetails()
+    profileUser := &models.User{ID: profileID}
+    err = profileUser.Refresh()
+    if err != nil {
+        http.Error(w, "Profile not found", http.StatusNotFound)
+        return
+    }
 
-	RespondWithJSON(w, http.StatusOK, user)
+    // Check visibility
+    visible, err := profileUser.IsProfileVisibleTo(currentUser.ID)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    if !visible {
+        http.Error(w, "Profile is private", http.StatusForbidden)
+        return
+    }
+
+    // Get user activity
+    activity, err := profileUser.GetActivity()
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    // Prepare response
+    response := map[string]interface{}{
+        "user":     profileUser,
+        "activity": activity,
+        "isOwner":  currentUser.ID == profileUser.ID,
+    }
+
+    RespondWithJSON(w, http.StatusOK, response)
 }
 
 func UpdateProfile(w http.ResponseWriter, r *http.Request) {
-	user, err := AuthUser(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
+    currentUser, err := AuthUser(r)
+    if err != nil {
+        http.Error(w, "Unauthorized", http.StatusUnauthorized)
+        return
+    }
 
-	if r.FormValue("password") != r.FormValue("confirm_password") {
-		http.Error(w, "Passwords do not match", http.StatusBadRequest)
-		return
-	}
+    // Parse form values
+    age, err := strconv.Atoi(r.FormValue("age"))
+    if err != nil {
+        http.Error(w, "Invalid age", http.StatusBadRequest)
+        return
+    }
 
-	user.Username = r.FormValue("username")
-	user.Email = r.FormValue("email")
-	user.Password = r.FormValue("password")
+    // Update all user fields
+    currentUser.Username = r.FormValue("username")
+    currentUser.Age = age
+    currentUser.Gender = r.FormValue("gender")
+    currentUser.FirstName = r.FormValue("first_name")
+    currentUser.LastName = r.FormValue("last_name")
+    currentUser.Email = r.FormValue("email")
+    currentUser.ProfileType = r.FormValue("profile_type")
+    currentUser.AboutMe = r.FormValue("about_me")
 
-	err = user.Update()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+    // Handle optional password update
+    if password := r.FormValue("password"); password != "" {
+        currentUser.Password = password
+    }
 
-	user.HideDetails()
+    // Handle avatar upload if provided
+    file, header, err := r.FormFile("avatar")
+    if err == nil && file != nil {
+        defer file.Close()
+        err = currentUser.StoreAvatarFile(file, header)
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+    }
 
-	RespondWithJSON(w, http.StatusOK, user)
+    // Update user in database
+    err = currentUser.Update()
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    RespondWithJSON(w, http.StatusOK, currentUser)
 }
+

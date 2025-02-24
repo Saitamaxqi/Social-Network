@@ -16,6 +16,7 @@ func CreateTables() error {
 		&models.Report{},
 		&models.Notification{},
 		&models.PrivateMessage{},
+		&models.Follow{},
 	}
 
 	for _, model := range models {
