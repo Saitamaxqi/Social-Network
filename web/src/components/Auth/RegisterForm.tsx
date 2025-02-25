@@ -13,7 +13,6 @@ export default function RegisterForm() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [type] = useState('user');
   const [avatar, setAvatar] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>('');
   const [profileType, setProfileType] = useState('public');
@@ -56,7 +55,6 @@ export default function RegisterForm() {
       formData.append('last_name', lastName);
       formData.append('email', email);
       formData.append('password', password);
-      formData.append('type', type);
       if (avatar) {
         formData.append('avatar', avatar);
       }
