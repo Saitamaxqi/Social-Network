@@ -63,7 +63,8 @@ export default function RegisterForm() {
         formData.append('about_me', aboutMe);
       }
 
-      const result = await fetch('/api/auth/register', {
+      // Use the correct API endpoint path
+      const result = await fetch('/api/register', {
         method: 'POST',
         body: formData,
       });
