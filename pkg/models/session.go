@@ -3,30 +3,25 @@ package models
 import (
 	"errors"
 	"github.com/gofrs/uuid"
-	"time"
+	// "time"
 )
 
 type Session struct {
 	UUID   string `json:"uuid"`
 	UserID int    `json:"user_id"`
-
-	LastActive time.Time `json:"last_active"`
-	ExpiresAt  time.Time `json:"expires_at"`
 }
 
 func (s *Session) CreateTable() error {
 	_, err := DB.Exec(`CREATE TABLE IF NOT EXISTS sessions (
 			uuid            VARCHAR NOT NULL PRIMARY KEY,
 			user_id         INTEGER NOT NULL,
-			last_active		DATETIME DEFAULT CURRENT_TIMESTAMP,
-			expires_at      DATETIME NOT NULL,
 			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 		)`)
 	return err
 }
 
 func (s *Session) Index() ([]Model, error) {
-	rows, err := DB.Query(`SELECT * FROM sessions`)
+	rows, err := DB.Query(`SELECT uuid, user_id FROM sessions`)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +30,7 @@ func (s *Session) Index() ([]Model, error) {
 
 	for rows.Next() {
 		session := &Session{}
-		err = rows.Scan(&session.UUID, &session.UserID, &session.LastActive, &session.ExpiresAt)
+		err = rows.Scan(&session.UUID, &session.UserID)
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +47,7 @@ func (s *Session) Create() error {
 	}
 	s.UUID = id.String()
 
-	_, err = DB.Exec(`INSERT INTO sessions (uuid, user_id, expires_at) VALUES (?, ?, ?)`, s.UUID, s.UserID, s.ExpiresAt)
+	_, err = DB.Exec(`INSERT INTO sessions (uuid, user_id) VALUES (?, ?)`, s.UUID, s.UserID)
 	return err
 }
 
@@ -61,7 +56,7 @@ func (s *Session) Update() error {
 		return errors.New("session does not exist")
 	}
 
-	_, err := DB.Exec(`UPDATE sessions SET user_id = ?, last_active = ?, expires_at = ? WHERE uuid = ?`, s.UserID, s.LastActive, s.ExpiresAt, s.UUID)
+	_, err := DB.Exec(`UPDATE sessions SET user_id = ? WHERE uuid = ?`, s.UserID, s.UUID)
 	return err
 }
 
@@ -79,7 +74,7 @@ func (s *Session) Refresh() error {
 		return errors.New("session does not exist")
 	}
 
-	err := DB.QueryRow(`SELECT * FROM sessions WHERE uuid = ?`, s.UUID).Scan(&s.UUID, &s.UserID, &s.LastActive, &s.ExpiresAt)
+	err := DB.QueryRow(`SELECT uuid, user_id FROM sessions WHERE uuid = ?`, s.UUID).Scan(&s.UUID, &s.UserID)
 	if err != nil {
 		return errors.New("session does not exist")
 	}
@@ -92,11 +87,11 @@ func (s *Session) Exists() bool {
 }
 
 func (s *Session) Expired() bool {
-	return time.Now().After(s.ExpiresAt)
+	return false
 }
 
 func (s *Session) Idle() bool {
-	return time.Now().After(s.LastActive.Add(time.Minute * 15))
+	return false
 }
 
 func GetSessionByUUID(uuid string) (*Session, error) {
@@ -106,10 +101,10 @@ func GetSessionByUUID(uuid string) (*Session, error) {
 }
 
 func GetSessionByUserID(userID int) (*Session, error) {
-	row := DB.QueryRow(`SELECT * FROM sessions WHERE user_id = ?`, userID)
+	row := DB.QueryRow(`SELECT uuid, user_id FROM sessions WHERE user_id = ?`, userID)
 
 	session := &Session{}
-	err := row.Scan(&session.UUID, &session.UserID, &session.LastActive, &session.ExpiresAt)
+	err := row.Scan(&session.UUID, &session.UserID)
 	return session, err
 }
 
