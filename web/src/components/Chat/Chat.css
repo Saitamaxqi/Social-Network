@@ -125,12 +125,28 @@
   margin-top: 0.25rem; /* Space above timestamp */
 }
 
+
 /* Message input area at bottom of chat */
 .chat-input {
   padding: 1rem; /* Inner spacing */
   border-top: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border separator */
   display: flex; /* Use flexbox for layout */
   gap: 0.5rem; /* Space between input and button */
+  align-items: center; /* Center items vertically */
+}
+
+/* Emoji button styling */
+.emoji-button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  min-width: 2.5rem; /* Prevent shrinking */
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  color: #fff;
 }
 
 /* Text input field styling */

@@ -3,6 +3,8 @@
 import React from 'react';
 import './Chat.css'; // Import the chat styling
 
+
+
 /**
  * Props for the ChatMessage component
  * @property {string} content - The actual text content of the message
@@ -59,7 +61,9 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
       )}
       
       {/* Message content */}
-      <div>{content}</div>
+      <div>
+        {content}
+      </div>
       
       {/* Formatted timestamp */}
       <div className="message-time">{formatTime(timestamp)}</div>
