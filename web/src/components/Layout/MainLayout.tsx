@@ -11,7 +11,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         <NavigationSidebar />
 
         {/* Main Content */}
-        <main className="flex-1 flex items-center justify-center p-8">
+        <main className="flex-1 flex items-start justify-center p-8 overflow-y-auto">
           <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-8 w-full max-w-4xl min-h-[500px] shadow-xl">
             {children}
           </div>

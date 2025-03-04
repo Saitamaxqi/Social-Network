@@ -18,6 +18,7 @@ export default function NavigationSidebar() {
   const routes: NavigableRoute[] = [
     { path: '/', label: 'Home', requiresAuth: false },
     { path: '/posts', label: 'Posts', requiresAuth: false },
+    { path: '/posts/create', label: 'Create Post', requiresAuth: true },
     { path: '/profile', label: 'Profile', requiresAuth: true },
     { path: '/auth/logout', label: 'Logout', requiresAuth: true },
   ];
@@ -57,6 +58,20 @@ export default function NavigationSidebar() {
           <nav className="space-y-2">
             {routes.map((route) => {
               if (route.requiresAuth && !user) return null;
+              
+              // Special handling for Create Post link
+              if (route.label === 'Create Post' && user) {
+                return (
+                  <Link
+                    key={route.path}
+                    href="/posts/create"
+                    className="block px-4 py-2 text-gray-200 hover:bg-black/20 rounded transition-colors bg-blue-600/30"
+                  >
+                    + {route.label}
+                  </Link>
+                );
+              }
+              
               return (
                 <Link
                   key={route.path}

@@ -36,15 +36,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = async () => {
     try {
+      console.log('Checking authentication...');
       const response = await fetch('../api/auth/check-session', {
         credentials: 'include',
       });
       
       if (response.ok) {
         const data = await response.json();
+        console.log('Auth check successful:', data);
         setUser(data); // The backend sends the user directly
         Currentuser = data;
       } else {
+        console.log('Auth check failed:', await response.text());
         setUser(null);
         Currentuser = null;
       }
