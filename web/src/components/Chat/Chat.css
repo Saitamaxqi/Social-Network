@@ -1,0 +1,192 @@
+/* 
+* Chat Component Styles
+*
+* This file contains all the CSS for the chat interface components.
+* The styling follows a dark theme with subtle transparency effects
+* to match the overall design of the social network.
+*/
+
+/* Main container that holds the entire chat interface */
+.chat-container {
+  display: flex; /* Use flexbox for layout */
+  flex-direction: column; /* Stack children vertically */
+  height: 100%; /* Take full height of parent */
+  border-radius: 0.5rem; /* Rounded corners */
+  overflow: hidden; /* Hide content that exceeds the container */
+}
+
+/* Sidebar showing list of recent chat conversations */
+.chat-sidebar {
+  width: 250px; /* Fixed width for sidebar */
+  border-right: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border separator */
+  overflow-y: auto; /* Allow vertical scrolling when content overflows */
+}
+
+/* Individual chat item in the sidebar list */
+.chat-sidebar-item {
+  padding: 0.75rem 1rem; /* Inner spacing */
+  cursor: pointer; /* Show pointer cursor on hover */
+  transition: background-color 0.2s; /* Smooth transition for hover effect */
+}
+
+/* Hover effect for chat items */
+.chat-sidebar-item:hover {
+  background-color: rgba(255, 255, 255, 0.05); /* Slightly lighter on hover */
+}
+
+/* Style for the currently selected chat */
+.chat-sidebar-item.active {
+  background-color: rgba(255, 255, 255, 0.1); /* Brighter than hover state */
+}
+
+/* Main chat content area */
+.chat-content {
+  flex: 1; /* Take up remaining space */
+  display: flex; /* Use flexbox for layout */
+  flex-direction: column; /* Stack children vertically */
+  background-color: rgba(0, 0, 0, 0.3); /* Semi-transparent dark background */
+}
+
+/* Header area showing current chat recipient */
+.chat-header {
+  padding: 1rem; /* Inner spacing */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border separator */
+  display: flex; /* Use flexbox for layout */
+  align-items: center; /* Vertically center items */
+  gap: 0.5rem; /* Space between child elements */
+}
+
+/* User avatar circle - shows first letter of username */
+.user-avatar {
+  width: 2.5rem; /* Fixed width */
+  height: 2.5rem; /* Fixed height - creates a circle when combined with border-radius */
+  border-radius: 50%; /* Make it circular */
+  background-color: rgba(255, 255, 255, 0.1); /* Light background */
+  display: flex; /* Use flexbox for centering content */
+  align-items: center; /* Vertically center content */
+  justify-content: center; /* Horizontally center content */
+}
+
+/* Online status indicator dot */
+.user-status {
+  width: 0.75rem; /* Size of the status dot */
+  height: 0.75rem; /* Size of the status dot */
+  border-radius: 50%; /* Make it circular */
+  margin-left: -0.75rem; /* Negative margin to overlay on avatar */
+  margin-bottom: -0.75rem; /* Negative margin to overlay on avatar */
+}
+
+/* Green color for online status */
+.user-status.online {
+  background-color: #10b981; /* Green color */
+}
+
+/* Gray color for offline status */
+.user-status.offline {
+  background-color: #6b7280; /* Gray color */
+}
+
+/* Container for chat messages */
+.chat-messages {
+  flex: 1; /* Take up remaining space */
+  padding: 1rem; /* Inner spacing */
+  overflow-y: auto; /* Allow vertical scrolling when content overflows */
+  display: flex; /* Use flexbox for layout */
+  flex-direction: column-reverse; /* Show newest messages at the bottom */
+}
+
+/* Base style for all message bubbles */
+.message {
+  margin-bottom: 1rem; /* Space between messages */
+  max-width: 70%; /* Limit width to 70% of container */
+  padding: 0.75rem 1rem; /* Inner spacing */
+  border-radius: 1rem; /* Rounded corners */
+  position: relative; /* For positioning child elements */
+}
+
+/* Style for messages sent by current user */
+.message-sent {
+  align-self: flex-end; /* Align to right side */
+  background-color: #2563eb; /* Blue background */
+  border-bottom-right-radius: 0; /* Sharp corner to indicate message direction */
+}
+
+/* Style for messages received from other users */
+.message-received {
+  align-self: flex-start; /* Align to left side */
+  background-color: rgba(255, 255, 255, 0.1); /* Light transparent background */
+  border-bottom-left-radius: 0; /* Sharp corner to indicate message direction */
+}
+
+/* Timestamp display for messages */
+.message-time {
+  font-size: 0.75rem; /* Smaller text */
+  opacity: 0.7; /* Partially transparent */
+  margin-top: 0.25rem; /* Space above timestamp */
+}
+
+
+/* Message input area at bottom of chat */
+.chat-input {
+  padding: 1rem; /* Inner spacing */
+  border-top: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border separator */
+  display: flex; /* Use flexbox for layout */
+  gap: 0.5rem; /* Space between input and button */
+  align-items: center; /* Center items vertically */
+}
+
+/* Emoji button styling */
+.emoji-button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  min-width: 2.5rem; /* Prevent shrinking */
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  color: #fff;
+}
+
+/* Text input field styling */
+.chat-input input {
+  flex: 1; /* Take up remaining space */
+  background-color: rgba(255, 255, 255, 0.1); /* Semi-transparent background */
+  border: none; /* Remove default border */
+  border-radius: 1.5rem; /* Fully rounded corners */
+  padding: 0.75rem 1rem; /* Inner spacing */
+  color: white; /* Text color */
+  outline: none; /* Remove outline on focus */
+}
+
+/* Send button styling */
+.chat-input button {
+  background-color: #2563eb; /* Blue background */
+  border: none; /* Remove default border */
+  border-radius: 50%; /* Make it circular */
+  width: 2.5rem; /* Fixed width */
+  height: 2.5rem; /* Fixed height */
+  display: flex; /* Use flexbox for centering content */
+  align-items: center; /* Vertically center content */
+  justify-content: center; /* Horizontally center content */
+  cursor: pointer; /* Show pointer cursor on hover */
+  transition: background-color 0.2s; /* Smooth transition for hover effect */
+}
+
+/* Hover effect for send button */
+.chat-input button:hover {
+  background-color: #1d4ed8; /* Darker blue on hover */
+}
+
+/* Empty state display when no chat is selected or no messages */
+.empty-state {
+  display: flex; /* Use flexbox for layout */
+  flex-direction: column; /* Stack children vertically */
+  align-items: center; /* Horizontally center content */
+  justify-content: center; /* Vertically center content */
+  height: 100%; /* Take full height of parent */
+  text-align: center; /* Center-align text */
+  padding: 2rem; /* Inner spacing */
+  opacity: 0.7; /* Partially transparent */
+}
