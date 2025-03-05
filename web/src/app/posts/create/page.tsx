@@ -66,10 +66,8 @@ export default function CreatePostPage() {
       postFormData.append('title', formData.title);
       postFormData.append('body', formData.body);
       
-      // Append each category
-      formData.categories.forEach(categoryId => {
-        postFormData.append('categories', categoryId);
-      });
+      // Append categories as a comma-separated string
+      postFormData.append('categories', formData.categories.join(','));
       
       // Submit the form data
       const response = await fetch('/api/posts/create', {

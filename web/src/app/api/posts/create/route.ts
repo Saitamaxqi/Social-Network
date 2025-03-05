@@ -1,18 +1,20 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import axios from 'axios';
 
 export async function POST(request: NextRequest) {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
   
   try {
     // Check if user is authenticated
-    const authResponse = await fetch(`${apiUrl}/activity`, {
+    const authResponse = await axios.get(`${apiUrl}/activity`, {
       headers: {
         Cookie: request.headers.get('cookie') || '',
       },
+      withCredentials: true
     });
     
-    if (!authResponse.ok) {
+    if (!authResponse.data) {
       return NextResponse.json(
         { message: 'You must be logged in to create a post' },
         { status: 401 }
@@ -23,26 +25,26 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     
     // Forward the request to the backend
-    const response = await fetch(`${apiUrl}/posts`, {
-      method: 'POST',
-      body: formData,
+    const response = await axios.post(`${apiUrl}/posts`, formData, {
       headers: {
         // Forward cookies for authentication
         Cookie: request.headers.get('cookie') || '',
       },
+      withCredentials: true
     });
     
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: 'Failed to create post' }));
-      return NextResponse.json(errorData, { status: response.status });
-    }
-    
-    const data = await response.json();
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json(response.data, { status: 201 });
   } catch (error) {
     console.error('Error creating post:', error);
+    
+    if (axios.isAxiosError(error)) {
+      const statusCode = error.response?.status || 500;
+      const errorMessage = error.response?.data?.message || 'Failed to create post';
+      return NextResponse.json({ message: errorMessage }, { status: statusCode });
+    }
+    
     return NextResponse.json(
-      { message: error instanceof Error ? error.message : 'An unknown error occurred' },
+      { message: 'Failed to connect to the backend server. Please try again later.' },
       { status: 500 }
     );
   }
