@@ -1,7 +1,7 @@
 'use client'; // This directive ensures the component runs on the client side
 
 import React, { useState, useEffect, useCallback } from 'react';
-import ChatSidebar from './ChatSidebar';
+import { useSearchParams } from 'next/navigation';
 import ChatHeader from './ChatHeader';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
@@ -60,6 +60,8 @@ interface User {
  * - Shows online/offline status of users
  */
 const ChatInterface: React.FC = () => {
+  const searchParams = useSearchParams();
+  const userIdParam = searchParams.get('userId');
   // State for storing the currently selected user
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   // State for tracking which users are online
@@ -144,10 +146,14 @@ const ChatInterface: React.FC = () => {
   }, [selectedUser, page]);
 
   /**
-   * Handles user selection from the sidebar
-   * @param {number} userId - ID of the selected user
+   * Fetch user details when userId changes in URL
    */
-  const handleSelectUser = useCallback((userId: number) => {
+  useEffect(() => {
+    if (!userIdParam) return;
+    
+    const userId = parseInt(userIdParam);
+    if (isNaN(userId)) return;
+    
     // Reset pagination when changing users
     setPage(0);
     setHasMoreMessages(true);
@@ -169,7 +175,7 @@ const ChatInterface: React.FC = () => {
     };
 
     fetchUserDetails();
-  }, []);
+  }, [userIdParam]);
 
   /**
    * Loads more messages when scrolling up
@@ -227,12 +233,6 @@ const ChatInterface: React.FC = () => {
 
   return (
     <div className="chat-container flex h-full">
-      {/* Sidebar with recent chats */}
-      <ChatSidebar 
-        selectedUserId={selectedUser?.id || null} 
-        onSelectUser={handleSelectUser} 
-      />
-
       {/* Main chat area */}
       <div className="chat-content flex-1">
         {/* Show chat header with recipient info if a user is selected */}
@@ -281,8 +281,8 @@ const ChatInterface: React.FC = () => {
           </div>
         ) : (
           <div className="empty-state text-white/70">
-            <div className="text-lg mb-2">Select a conversation</div>
-            <div className="text-sm">Choose a user from the sidebar to start chatting</div>
+            <div className="text-lg mb-2">No conversation selected</div>
+            <div className="text-sm">Click on a chat icon next to a user in the right sidebar to start chatting</div>
           </div>
         )}
 

@@ -11,6 +11,7 @@
   display: flex; /* Use flexbox for layout */
   flex-direction: column; /* Stack children vertically */
   height: 100%; /* Take full height of parent */
+  width: 100%; /* Take full width */
   border-radius: 0.5rem; /* Rounded corners */
   overflow: hidden; /* Hide content that exceeds the container */
 }
@@ -45,6 +46,7 @@
   display: flex; /* Use flexbox for layout */
   flex-direction: column; /* Stack children vertically */
   background-color: rgba(0, 0, 0, 0.3); /* Semi-transparent dark background */
+  width: 100%; /* Take full width */
 }
 
 /* Header area showing current chat recipient */

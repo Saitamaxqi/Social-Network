@@ -57,7 +57,7 @@ export default function ChatsPage() {
 
   return (
     <MainLayout>
-      <div className="h-full bg-gray-900 rounded-lg overflow-hidden shadow-lg">
+      <div className="h-full bg-gray-900 rounded-lg overflow-hidden shadow-lg relative">
         <ChatInterface />
       </div>
     </MainLayout>
