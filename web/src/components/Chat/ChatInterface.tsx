@@ -1,6 +1,6 @@
 'use client'; // This directive ensures the component runs on the client side
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ChatHeader from './ChatHeader';
 import ChatMessage from './ChatMessage';
@@ -76,6 +76,10 @@ const ChatInterface: React.FC = () => {
   const [page, setPage] = useState(0);
   // Whether there are more messages to load
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  // Reference to the chat messages container for auto-scrolling
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  // Flag to track if we're loading older messages (pagination)
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
 
   /**
    * Fetches the current authenticated user info
@@ -127,9 +131,23 @@ const ChatInterface: React.FC = () => {
           setHasMoreMessages(false);
         }
         
-        // Append new messages to existing ones for pagination
-        setMessages(prev => [...prev, ...data]);
+        // For pagination, we need to add older messages at the beginning
+        // Filter out any duplicate messages that might already exist in the current messages array
+        setMessages(prev => {
+          const existingMessageIds = new Set(prev.map(msg => msg.id));
+          const newMessages = data.filter(msg => !existingMessageIds.has(msg.id));
+          return [...newMessages, ...prev];
+        });
         setLoadingMessages(false);
+        
+        // If this is the first page (initial load), scroll to bottom
+        if (page === 0) {
+          setTimeout(() => {
+            if (messagesContainerRef.current) {
+              messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+            }
+          }, 200); // Increased timeout to ensure rendering is complete
+        }
       } catch (error) {
         console.error('Error fetching messages:', error);
         setLoadingMessages(false);
@@ -146,6 +164,21 @@ const ChatInterface: React.FC = () => {
   }, [selectedUser, page]);
 
   /**
+   * Scroll to bottom when messages change, except when loading older messages
+   */
+  useEffect(() => {
+    if (messages.length > 0 && !loadingOlderMessages) {
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        }
+      }, 200);
+    }
+    // Reset the loading older messages flag after messages are updated
+    setLoadingOlderMessages(false);
+  }, [messages, loadingOlderMessages]);
+
+  /**
    * Fetch user details when userId changes in URL
    */
   useEffect(() => {
@@ -157,6 +190,8 @@ const ChatInterface: React.FC = () => {
     // Reset pagination when changing users
     setPage(0);
     setHasMoreMessages(true);
+    // Reset messages when changing users
+    setMessages([]);
     
     // Fetch user details and set as selected user
     const fetchUserDetails = async () => {
@@ -183,6 +218,7 @@ const ChatInterface: React.FC = () => {
    */
   const loadMoreMessages = useCallback(() => {
     if (!loadingMessages && hasMoreMessages) {
+      setLoadingOlderMessages(true);
       setPage(prev => prev + 1);
     }
   }, [loadingMessages, hasMoreMessages]);
@@ -203,19 +239,39 @@ const ChatInterface: React.FC = () => {
       if (!response.ok) {
         throw new Error('Failed to send message');
       }
-
-      // Optimistically add the message to the UI
-      const newMessage: Message = {
+      
+      // Create a valid temporary message first to ensure we have something to display immediately
+      const tempMessage: Message = {
         id: Date.now(), // Temporary ID
-        content,
+        content, // Use the content from the input directly
         sender_id: currentUser.id,
         recipient_id: selectedUser.id,
         created_at: new Date().toISOString(),
         sender: currentUser,
         recipient: selectedUser,
       };
+      
+      // Add the temporary message to the UI immediately
+      setMessages(prev => [...prev, tempMessage]);
+      
+      // Try to get the actual message from the response
+      try {
+        const responseData = await response.json();
+        // We'll update the message when we get the server response, but we won't display it again
+        // The server-side message will be fetched on the next refresh or message load
+      } catch (e) {
+        console.log('Could not parse server response, using temporary message');
+        // We already added the temporary message, so no need to do anything here
+      }
 
-      setMessages(prev => [newMessage, ...prev]);
+      // We've already added the message to the UI above, so we don't need to do it again here
+      
+      // Scroll to bottom after adding a new message
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        }
+      }, 200); // Increased timeout to ensure rendering is complete
     } catch (error) {
       console.error('Error sending message:', error);
       alert('Failed to send message. Please try again.');
@@ -243,7 +299,7 @@ const ChatInterface: React.FC = () => {
 
         {/* Display chat messages or empty state */}
         {selectedUser ? (
-          <div className="chat-messages">
+          <div className="chat-messages" ref={messagesContainerRef}>
             {/* Load more messages button */}
             {hasMoreMessages && (
               <button 
@@ -257,15 +313,18 @@ const ChatInterface: React.FC = () => {
             
             {/* Display messages */}
             {messages.length > 0 ? (
-              messages.map((message) => (
-                <ChatMessage
-                  key={message.id}
-                  content={message.content}
-                  sentByMe={isMessageFromMe(message)}
-                  timestamp={message.created_at}
-                  senderName={!isMessageFromMe(message) ? message.sender.username : undefined}
-                />
-              ))
+              // Sort messages by timestamp to ensure chronological order
+              [...messages]
+                .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                .map((message, index) => (
+                  <ChatMessage
+                    key={`${message.id}-${index}`}
+                    content={message.content}
+                    sentByMe={isMessageFromMe(message)}
+                    timestamp={message.created_at}
+                    senderName={!isMessageFromMe(message) && message.sender ? message.sender.username : undefined}
+                  />
+                ))
             ) : (
               <div className="empty-state text-white/70">
                 {loadingMessages ? (

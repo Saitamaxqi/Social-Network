@@ -94,7 +94,8 @@
   padding: 1rem; /* Inner spacing */
   overflow-y: auto; /* Allow vertical scrolling when content overflows */
   display: flex; /* Use flexbox for layout */
-  flex-direction: column-reverse; /* Show newest messages at the bottom */
+  flex-direction: column; /* Normal column direction */
+  justify-content: flex-start; /* Align messages from the top */
 }
 
 /* Base style for all message bubbles */

@@ -48,8 +48,17 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
    * @returns {string} Formatted time string (e.g., "14:32")
    */
   const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    try {
+      const date = new Date(dateString);
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      // If there's any error parsing the date, return current time
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
   };
 
   return (
