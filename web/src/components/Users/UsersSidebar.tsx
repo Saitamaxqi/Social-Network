@@ -85,9 +85,9 @@ export default function UsersSidebar() {
                 >
                   <div className="relative">
                     <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center">
-                      {user.avatar.Valid ? (
+                      {user.avatar?.Valid ? (
                         <Image
-                          src={user.avatar.String}
+                          src={`http://localhost:8080${user.avatar.String}`}
                           alt={user.username}
                           width={32}
                           height={32}
@@ -99,8 +99,8 @@ export default function UsersSidebar() {
                     </div>
                     {/* Online/Offline status indicator */}
                     <div 
-                      className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-gray-900 ${chatData.onlineUsers[user.id.toString()] ? 'bg-green-500' : 'bg-gray-500'}`} 
-                      title={chatData.onlineUsers[user.id.toString()] ? 'Online' : 'Offline'}
+                      className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-gray-900 ${chatData.onlineUsers[user.username] ? 'bg-green-500' : 'bg-gray-500'}`} 
+                      title={chatData.onlineUsers[user.username] ? 'Online' : 'Offline'}
                     />
                   </div>
                   <span className="text-sm font-medium">{user.username}</span>
