@@ -36,7 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('../api/auth/check-session', {
+      // Updated to use the correct API endpoint with absolute path
+      const response = await fetch('/api/auth/check-session', {
         credentials: 'include',
       });
       
@@ -68,7 +69,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       formData.append('identifier', identifier);
       formData.append('password', password);
 
-      const response = await fetch('../api/auth/login', {
+      // Updated to use the correct API endpoint with absolute path
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         body: formData,
         credentials: 'include',
@@ -89,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+      // Updated to use the correct API endpoint
       const response = await fetch('/api/auth/logout', {
         method: 'GET',
         credentials: 'include',

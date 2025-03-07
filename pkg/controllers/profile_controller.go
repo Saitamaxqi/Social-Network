@@ -51,10 +51,18 @@ func GetProfile(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    // Get profile stats
+    stats, err := models.GetUserStats(profileUser.ID)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
     // Prepare response
     response := map[string]interface{}{
         "user":     profileUser,
         "activity": activity,
+        "stats":    stats,
         "isOwner":  currentUser.ID == profileUser.ID,
     }
 

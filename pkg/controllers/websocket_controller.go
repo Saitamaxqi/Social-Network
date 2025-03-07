@@ -22,11 +22,19 @@ func InitHub() {
 }
 
 func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
+    // Get user from session
+    user, err := AuthUser(r)
+    if err != nil {
+        http.Error(w, "Unauthorized", http.StatusUnauthorized)
+        return
+    }
+
     // check if websocket request has Upgrade header
     if r.URL.Path == "/ws" && r.Header.Get("Upgrade") != "websocket" {
         http.Redirect(w, r, "/", http.StatusSeeOther)
         return
     }
+
     conn, err := upgrader.Upgrade(w, r, nil)
     if err != nil {
         http.Error(w, err.Error(), http.StatusBadRequest)
@@ -34,9 +42,10 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     client := &socket.Client{
-        Hub:  hub,
-        Conn: conn,
-        Send: make(chan []byte, 256),
+        Hub:    hub,
+        UserID: user.ID,
+        Conn:   conn,
+        Send:   make(chan []byte, 256),
     }
 
     client.Hub.Register <- client

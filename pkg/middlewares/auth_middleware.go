@@ -19,27 +19,7 @@ func Auth(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		expired := session.Expired()
-		idle := session.Idle()
-
-		if !session.Exists() || expired || idle {
-			// Delete the session and cookie
-			session.Delete()
-
-			http.SetCookie(w, &http.Cookie{
-				Name:   "session",
-				Value:  "",
-				MaxAge: -1,
-			})
-			if expired {
-				http.Error(w, "Session expired", http.StatusUnauthorized)
-				return
-			}
-			if idle {
-				http.Error(w, "Session Timeout", http.StatusUnauthorized)
-				return
-			}
-
+		if !session.Exists() {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}

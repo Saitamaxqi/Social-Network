@@ -84,11 +84,10 @@ func PostPrivateMessageController(w http.ResponseWriter, r *http.Request) {
 		Date:     time.Now(),
 	}
     
-    notificationJSON, _ := json.Marshal(map[string]interface{}{
+hub.SendToUser(recipientID, map[string]interface{}{
         "type": "notification",
         "notification": notification,
     })
-    hub.Broadcast <- notificationJSON
 
 	err = notification.Create()
 	if err != nil {

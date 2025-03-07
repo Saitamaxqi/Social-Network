@@ -93,7 +93,7 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 
 	user, err := AuthUser(r)
 
-    if err != nil {
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -102,8 +102,8 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+		return
+	}
 
 	err = session.Delete()
 	if err != nil {
@@ -112,18 +112,17 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-    http.SetCookie(w, &http.Cookie{
+	http.SetCookie(w, &http.Cookie{
 		Name:   "session",
 		Value:  "",
-		MaxAge: -1,
 	})
 
 	offlineJSON, _ := json.Marshal(map[string]interface{}{
 		"type": "user status",
-    })
+	})
 	hub.Broadcast <- offlineJSON
 
-    RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Logged out"})
+	RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Logged out"})
 }
 
 func login(w http.ResponseWriter, r *http.Request, user *models.User) {
@@ -139,14 +138,12 @@ func login(w http.ResponseWriter, r *http.Request, user *models.User) {
 		http.SetCookie(w, &http.Cookie{
 			Name:     "session",
 			Value:    "",
-			MaxAge:   -1,
-			Expires:  time.Now().Add(-time.Hour),
 			Path:     "/",
 			SameSite: http.SameSiteLaxMode,
 		})
 	}
 
-	userSession, err := user.NewSession(time.Hour * 24) // Create a new session with 24 hour expiry
+	userSession, err := user.NewSession(0) // Create a session with no expiry
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -155,7 +152,6 @@ func login(w http.ResponseWriter, r *http.Request, user *models.User) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session",
 		Value:    userSession.UUID,
-		Expires:  userSession.ExpiresAt,
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
 	})
@@ -184,8 +180,6 @@ func loginThirdParty(w http.ResponseWriter, r *http.Request, user *models.User) 
 		http.SetCookie(w, &http.Cookie{
 			Name:     "session",
 			Value:    "",
-			MaxAge:   -1,
-			Expires:  time.Now().Add(-time.Hour),
 			Path:     "/",
 			SameSite: http.SameSiteLaxMode,
 		})
@@ -200,7 +194,6 @@ func loginThirdParty(w http.ResponseWriter, r *http.Request, user *models.User) 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session",
 		Value:    userSession.UUID,
-		Expires:  userSession.ExpiresAt,
 		Path:     "/",
 		SameSite: http.SameSiteLaxMode,
 	})
