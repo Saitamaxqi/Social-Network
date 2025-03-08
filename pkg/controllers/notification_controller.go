@@ -16,6 +16,8 @@ func NotificationController(w http.ResponseWriter, r *http.Request) {
 		} else {
 			UpdateNotification(w, r)
 		}
+	case "DELETE":
+		DeleteNotification(w, r)
 	}
 }
 
@@ -94,4 +96,38 @@ func UpdateAllNotifications(w http.ResponseWriter, r *http.Request) {
 	}
 
 	RespondWithJSON(w, http.StatusOK, map[string]string{"message": "All notifications are updated"})
+}
+
+func DeleteNotification(w http.ResponseWriter, r *http.Request) {
+	user, err := AuthUser(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	notificationID, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Notification ID is required", http.StatusBadRequest)
+		return
+	}
+
+	notification := &models.Notification{ID: notificationID}
+	err = notification.Refresh()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	if notification.UserID != user.ID {
+		http.Error(w, "You are not authorized to delete this notification", http.StatusUnauthorized)
+		return
+	}
+
+	err = notification.Delete()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Notification deleted successfully"})
 }

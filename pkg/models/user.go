@@ -419,7 +419,7 @@ func (u *User) ModeratorRequests() ([]*User, error) {
 // Notifications
 
 func (u *User) Notifications() ([]*Notification, error) {
-	rows, err := DB.Query(`SELECT * FROM notifications WHERE user_id = ?`, u.ID)
+	rows, err := DB.Query(`SELECT * FROM notifications WHERE user_id = ? ORDER BY date DESC`, u.ID)
 	if err != nil {
 		return nil, err
 	}

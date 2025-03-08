@@ -20,6 +20,8 @@ interface NotificationContextType {
   unreadCount: number;
   markAsRead: (notificationId: number) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>;
+  setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const NotificationContext = createContext<NotificationContextType | null>(null);
@@ -115,7 +117,21 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   const unreadCount = (notifications || []).filter(n => !n.seen).length;
 
   return (
-    <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead, markAllAsRead }}>
+    <NotificationContext.Provider value={{
+      notifications,
+      unreadCount,
+      markAsRead,
+      markAllAsRead,
+      setNotifications,
+      setUnreadCount: (count) => setNotifications(prev => {
+        // Update unread count by recalculating from notifications
+        const newUnread = typeof count === 'function' ? count(prev.filter(n => !n.seen).length) : count;
+        return prev.map((n, i) => ({
+          ...n,
+          seen: i >= newUnread // Mark notifications as seen based on new unread count
+        }));
+      })
+    }}>
       {children}
     </NotificationContext.Provider>
   );
