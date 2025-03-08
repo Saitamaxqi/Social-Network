@@ -64,7 +64,7 @@ export default function RegisterForm() {
       }
 
       // Use the correct API endpoint path
-      const result = await fetch('/api/register', {
+      const result = await fetch('/api/auth/register', {
         method: 'POST',
         body: formData,
       });

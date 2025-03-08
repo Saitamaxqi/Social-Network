@@ -1,9 +1,11 @@
 package controllers
 
 import (
+	"fmt"
 	"forum/pkg/models"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 func FollowController(w http.ResponseWriter, r *http.Request) {
@@ -47,6 +49,46 @@ func CreateFollow(w http.ResponseWriter, r *http.Request) {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
+    if follow.Status == "pending" {
+        notification := &models.Notification{
+            UserID:   targetUserID,
+            Text:     fmt.Sprintf("%s requested to follow you", currentUser.Username),
+            SenderID: currentUser.ID,
+            Type:     "follow request",
+            LinkID:   follow.ID,
+            Date:     time.Now(),
+        }
+        err = notification.Create()
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+    
+        hub.SendToUser(targetUserID, map[string]interface{}{
+            "type":         "notification",
+            "notification": notification,
+        })
+    } else {
+        notification := &models.Notification{   
+            UserID:   targetUserID,
+            Text:     fmt.Sprintf("%s started following you", currentUser.Username),
+            SenderID: currentUser.ID,
+            Type:     "follow",
+            LinkID:   currentUser.ID,
+            Date:     time.Now(),
+        }
+
+        err = notification.Create()
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+    
+        hub.SendToUser(targetUserID, map[string]interface{}{
+            "type":         "notification",
+            "notification": notification,
+        })
+    }
 
     RespondWithJSON(w, http.StatusOK, follow)
 }
@@ -83,6 +125,29 @@ func UpdateFollow(w http.ResponseWriter, r *http.Request) {
     }
 	//make so if the statue is declined it deletes the follow request
 	if status == "declined" {
+		// Send notification to follower about declined request
+		notification := &models.Notification{
+			UserID:   follow.FollowerID,
+			Text:     fmt.Sprintf("%s declined your follow request", currentUser.Username),
+			SenderID: currentUser.ID,
+			Type:     "follow",
+			LinkID:   currentUser.ID,
+			Date:     time.Now(),
+		}
+
+		// Save notification to database
+		err = notification.Create()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Send real-time notification
+		hub.SendToUser(follow.FollowerID, map[string]interface{}{
+			"type":         "notification",
+			"notification": notification,
+		})
+
 		err = follow.Delete()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -98,6 +163,29 @@ func UpdateFollow(w http.ResponseWriter, r *http.Request) {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
+
+    // Send notification to follower about accepted request
+    notification := &models.Notification{
+        UserID:   follow.FollowerID,
+        Text:     fmt.Sprintf("%s accepted your follow request", currentUser.Username),
+        SenderID: currentUser.ID,
+        Type:     "follow",
+        LinkID:   currentUser.ID,
+        Date:     time.Now(),
+    }
+
+    // Save notification to database
+    err = notification.Create()
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    // Send real-time notification
+    hub.SendToUser(follow.FollowerID, map[string]interface{}{
+        "type":         "notification",
+        "notification": notification,
+    })
 
     RespondWithJSON(w, http.StatusOK, follow)
 }

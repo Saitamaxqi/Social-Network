@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import NotificationDropdown from '../Notifications/NotificationDropdown';
 
 export default function NavigationSidebar() {
   const { user, loading } = useAuth();
@@ -19,8 +20,7 @@ export default function NavigationSidebar() {
     { path: '/', label: 'Home', requiresAuth: false },
     { path: '/posts', label: 'Posts', requiresAuth: false },
     { path: '/createpost', label: 'CreatePost', requiresAuth: true },
-    { path: '/chats', label: 'Chats', requiresAuth: true },
-    { path: '/notifications', label: 'Notifications', requiresAuth: true },
+    { path: '/groups', label: 'Groups', requiresAuth: true },
     { path: '/profile', label: 'Profile', requiresAuth: true },
     { path: '/auth/logout', label: 'Logout', requiresAuth: true },
   ];
@@ -46,12 +46,18 @@ export default function NavigationSidebar() {
         <div className="space-y-4">
           {/* User info section when logged in */}
           {user && (
-            <div className="mb-6 text-center">
-              <div className="text-lg font-semibold text-white mb-2">
-                Welcome back
+            <div className="mb-6">
+              <div className="text-center">
+                <div className="text-lg font-semibold text-white mb-2">
+                  Welcome back
+                </div>
+                <div className="text-sm text-gray-300">
+                  {user.email || user.username}
+                </div>
               </div>
-              <div className="text-sm text-gray-300">
-                {user.email || user.username}
+              {/* Notifications */}
+              <div className="mt-4 flex justify-center">
+                <NotificationDropdown />
               </div>
             </div>
           )}
