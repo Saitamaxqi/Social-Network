@@ -15,7 +15,7 @@ export default function NavigationSidebar() {
     path: string;
     requiresAuth?: boolean;
   };
-  const getProfilePath = (id: string) => `/profile/${id}`;
+  // const getProfilePath = (id: string) => `/profile/${id}`;
   const routes: NavigableRoute[] = [
     { path: '/', label: 'Home', requiresAuth: false },
     { path: '/posts', label: 'Posts', requiresAuth: false },
@@ -23,7 +23,7 @@ export default function NavigationSidebar() {
     { path: '/chats', label: 'Chats', requiresAuth: true },
     { path: '/notifications', label: 'Notifications', requiresAuth: true },
     { path: '/profile', label: 'Profile', requiresAuth: true },
-    { path: user ? getProfilePath(user.id) : '/profile', label: 'Profile', requiresAuth: true }, // Dynamically set profile path
+    // { path: user ? getProfilePath(user.id) : '/profile', label: 'Profile', requiresAuth: true }, // Dynamically set profile path
     { path: '/auth/logout', label: 'Logout', requiresAuth: true },
   ];
 
