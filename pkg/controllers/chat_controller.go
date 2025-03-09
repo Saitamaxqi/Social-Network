@@ -1,17 +1,12 @@
 package controllers
 
 import (
-	// "encoding/json"
-	// "encoding/json"
-	"encoding/json"
 	"fmt"
 	"forum/pkg/consts"
 	"forum/pkg/models"
+	"net/http"
 	"strconv"
 	"time"
-
-	// "forum/pkg/utils"
-	"net/http"
 )
 
 func OnlineUsersController(users []models.User) map[string]bool {
@@ -84,8 +79,7 @@ func PostPrivateMessageController(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid recipient ID", http.StatusBadRequest)
 		return
 	}
-	//get user with this id
-	recipient, err := models.GetUserByID(recipientID)
+
 	message := r.URL.Query().Get("messageInput")
 	fmt.Println("Saving message :::", message)
 	err = models.SavePrivateMessage(user.ID, recipientID, message)
@@ -113,14 +107,14 @@ func PostPrivateMessageController(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//add a unique id for each message
-	messageJSON, _ := json.Marshal(map[string]interface{}{
-		"type":       "message",
-		"message":    message,
-		"recipient":  recipient,
-		"sender":     user,
-		"created_at": time.Now(),
+	hub.SendToUser(recipientID, map[string]interface{}{
+		"type": "message",
+		"message": map[string]interface{}{
+			"content":    message,
+			"sender":     user,
+			"created_at": time.Now(),
+		},
 	})
-	hub.Broadcast <- messageJSON
 	RespondWithJSON(w, http.StatusOK, "Message sent")
 }
 

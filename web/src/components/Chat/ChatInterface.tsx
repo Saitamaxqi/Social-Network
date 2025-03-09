@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { format } from 'date-fns';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import ChatHeader from './ChatHeader';
 import ChatMessage from './ChatMessage';
@@ -64,6 +63,7 @@ interface User {
 const ChatInterface: React.FC = () => {
   const searchParams = useSearchParams();
   const userIdParam = searchParams.get('userId');
+  const { socket } = useWebSocket();
   // State for storing the currently selected user
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   // State for tracking which users are online
@@ -82,8 +82,6 @@ const ChatInterface: React.FC = () => {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   // Flag to track if we're loading older messages (pagination)
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
-  // Access WebSocket connection from context
-  const { socket } = useWebSocket();
 
   /**
    * Fetches the current authenticated user info
@@ -139,7 +137,7 @@ const ChatInterface: React.FC = () => {
         // Filter out any duplicate messages that might already exist in the current messages array
         setMessages(prev => {
           const existingMessageIds = new Set(prev.map(msg => msg.id));
-          const newMessages = data.filter(msg => !existingMessageIds.has(msg.id));
+          const newMessages = data.filter((msg : Message) => !existingMessageIds.has(msg.id));
           return [...newMessages, ...prev];
         });
         setLoadingMessages(false);
@@ -182,137 +180,44 @@ const ChatInterface: React.FC = () => {
     setLoadingOlderMessages(false);
   }, [messages, loadingOlderMessages]);
 
-  /**
-   * Handle WebSocket messages for real-time chat
-   */
+  // Handle incoming websocket messages
   useEffect(() => {
-    if (!socket || !currentUser || !selectedUser) return;
+    if (!socket) return;
 
-    const handleWebSocketMessage = (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('WebSocket message received:', data);
-        
-        // Handle different types of WebSocket messages
-        if (data.type === 'message') {
-          console.log('Message type detected, current user:', currentUser?.id, 'selected user:', selectedUser?.id);
-          console.log('Message sender:', data.sender?.id, 'recipient:', data.recipient?.id);
-          
-          // Force refresh messages when a new message is received
-          if (currentUser && selectedUser) {
-            // Handle case where recipient might be null in the message
-            // If recipient is null, we need to determine if this message is for the current chat
-            // based on the sender information alone
-            let isRelevantMessage = false;
-            
-            if (data.recipient === null) {
-              // If recipient is null, check if sender matches either the current user or selected user
-              isRelevantMessage = data.sender && (
-                data.sender.id === currentUser.id || 
-                data.sender.id === selectedUser.id
-              );
-              console.log('Recipient is null, determining relevance based on sender:', isRelevantMessage);
-            } else {
-              // Normal case - check both sender and recipient
-              isRelevantMessage = (
-                (data.sender && data.sender.id === currentUser.id && data.recipient && data.recipient.id === selectedUser.id) ||
-                (data.sender && data.sender.id === selectedUser.id && data.recipient && data.recipient.id === currentUser.id)
-              );
-              console.log('Normal message relevance check:', isRelevantMessage);
-            }
-            
-            console.log('Is relevant message:', isRelevantMessage);
-            
-            if (isRelevantMessage) {
-              console.log('Relevant message received:', data);
-              
-              // Create a properly formatted message object with safe handling for null recipient
-              const newMessage: Message = {
-                id: Date.now(), // Generate a unique ID for the message
-                content: data.message,
-                sender_id: data.sender.id,
-                // Use selectedUser's ID as recipient_id if recipient is null and sender is currentUser
-                // Otherwise use currentUser's ID
-                recipient_id: data.recipient ? data.recipient.id : 
-                  (data.sender.id === currentUser.id ? selectedUser.id : currentUser.id),
-                created_at: data.created_at ? new Date(data.created_at).toISOString() : new Date().toISOString(),
-                sender: {
-                  id: data.sender.id,
-                  username: data.sender.username
-                },
-                recipient: {
-                  // If recipient is null, use the selectedUser or currentUser based on sender
-                  id: data.recipient ? data.recipient.id : 
-                    (data.sender.id === currentUser.id ? selectedUser.id : currentUser.id),
-                  username: data.recipient ? data.recipient.username : 
-                    (data.sender.id === currentUser.id ? selectedUser.username : currentUser.username)
-                }
-              };
-              
-              console.log('Adding new message to chat:', newMessage);
-            
-              // Add the new message to the chat - use a direct state update
-              // Use a callback function to ensure we're working with the latest state
-              console.log('About to update messages with new message:', newMessage);
-              
-              // Force a synchronous update to ensure the message is added immediately
-              setMessages(prev => {
-                // Check if message already exists to avoid duplicates
-                const messageExists = prev.some((msg) => 
-                  msg.content === newMessage.content && 
-                  msg.sender_id === newMessage.sender_id &&
-                  Math.abs(new Date(msg.created_at).getTime() - new Date(newMessage.created_at).getTime()) < 5000
-                );
-                
-                if (messageExists) {
-                  console.log('Message already exists, not adding duplicate');
-                  return prev;
-                }
-                
-                console.log('Adding message to chat history, current count:', prev.length);
-                // Create a completely new array to ensure React detects the change
-                const updatedMessages = [...prev, newMessage];
-                console.log('New messages count:', updatedMessages.length);
-                console.log('Updated messages:', updatedMessages);
-                
-                // Return the new array to trigger a re-render
-                return updatedMessages;
-              });
-              
-              // Log the current messages state to verify the update
-              setTimeout(() => {
-                console.log('Current messages state after update:', messages.length);
-              }, 10);
-            
-              // Scroll to bottom when receiving a new message
-              setTimeout(() => {
-                if (messagesContainerRef.current) {
-                  messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-                }
-              }, 100);
-            }
+    const handleMessage = (event: MessageEvent) => {
+      const data = JSON.parse(event.data);
+      
+      // Handle chat messages
+      if (data.type === 'message' && data.message && currentUser) {
+        const newMessage: Message = {
+          id: Date.now(), // Temporary ID for new messages
+          content: data.message.content,
+          sender_id: data.message.sender.id,
+          recipient_id: currentUser.id,
+          created_at: data.message.created_at,
+          sender: {
+            id: data.message.sender.id,
+            username: data.message.sender.username
+          },
+          recipient: {
+            id: currentUser.id,
+            username: currentUser.username
           }
-        } else if (data.type === 'user_status') {
-          // Update online status of users
-          setOnlineUsers(prev => ({
-            ...prev,
-            [data.username]: data.status === 'online'
-          }));
+        };
+
+        // Only add message if it's from the currently selected user
+        if (selectedUser && (newMessage.sender_id === selectedUser.id)) {
+          setMessages(prev => [...prev, newMessage]);
         }
-      } catch (error) {
-        console.error('Error handling WebSocket message:', error);
-        console.error('Raw message data:', event.data);
       }
     };
 
-    // Add event listener for incoming messages
-    socket.addEventListener('message', handleWebSocketMessage);
+    socket.addEventListener('message', handleMessage);
 
-    // Cleanup function to remove event listener
     return () => {
-      socket.removeEventListener('message', handleWebSocketMessage);
+      socket.removeEventListener('message', handleMessage);
     };
-  }, [socket, currentUser, selectedUser]);
+  }, [socket, selectedUser, currentUser]);
 
   /**
    * Fetch user details when userId changes in URL
@@ -367,9 +272,16 @@ const ChatInterface: React.FC = () => {
     if (!selectedUser || !content.trim() || !currentUser) return;
 
     try {
-      console.log('Sending message to user:', selectedUser.id, 'content:', content);
+      const response = await fetch(`/api/chats/${selectedUser.id}?messageInput=${encodeURIComponent(content)}`, {
+        method: 'POST',
+        credentials: 'include', // Include cookies in the request
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
       
-      // Create a temporary message to show immediately in the UI
+      // Create a valid temporary message first to ensure we have something to display immediately
       const tempMessage: Message = {
         id: Date.now(), // Temporary ID
         content, // Use the content from the input directly
@@ -380,49 +292,30 @@ const ChatInterface: React.FC = () => {
         recipient: selectedUser,
       };
       
-      console.log('Adding temporary message to UI:', tempMessage);
+      // Add the temporary message to the UI immediately
+      setMessages(prev => [...prev, tempMessage]);
       
-      // Add the temporary message to the UI immediately for better UX
-      setMessages(prev => {
-        console.log('Current messages before adding temp:', prev.length);
-        const newMessages = [...prev, tempMessage];
-        console.log('New messages count with temp:', newMessages.length);
-        return newMessages;
-      });
+      // Try to get the actual message from the response
+      try {
+        const responseData = await response.json();
+        // We'll update the message when we get the server response, but we won't display it again
+        // The server-side message will be fetched on the next refresh or message load
+      } catch (e) {
+        console.log('Could not parse server response, using temporary message');
+        // We already added the temporary message, so no need to do anything here
+      }
+
+      // We've already added the message to the UI above, so we don't need to do it again here
       
       // Scroll to bottom after adding a new message
       setTimeout(() => {
         if (messagesContainerRef.current) {
           messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
         }
-      }, 100);
-      
-      // Send the message to the server
-      console.log('Sending API request to server...');
-      const response = await fetch(`/api/chats/${selectedUser.id}?messageInput=${encodeURIComponent(content)}`, {
-        method: 'POST',
-        credentials: 'include', // Include cookies in the request
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to send message');
-      }
-      
-      console.log('Message sent successfully to server, waiting for WebSocket confirmation');
-      // The actual message will come back through WebSocket
-      // We've already shown a temporary version for better UX
-      
+      }, 200); // Increased timeout to ensure rendering is complete
     } catch (error) {
       console.error('Error sending message:', error);
       alert('Failed to send message. Please try again.');
-      
-      // Remove the temporary message if sending failed
-      setMessages(prev => prev.filter(msg => 
-        !(msg.content === content && 
-          msg.sender_id === currentUser.id && 
-          msg.recipient_id === selectedUser.id &&
-          new Date(msg.created_at).getTime() > Date.now() - 10000)
-      ));
     }
   }, [selectedUser, currentUser]);
 
