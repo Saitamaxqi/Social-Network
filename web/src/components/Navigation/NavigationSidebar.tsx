@@ -35,14 +35,14 @@ export default function NavigationSidebar() {
 
   if (loading) {
     return (
-      <div className="w-64 min-h-screen h-full bg-black/10 backdrop-blur-sm fixed left-0 top-0 flex items-center justify-center">
+      <div className="w-64 md:w-64 h-screen bg-black/10 backdrop-blur-sm flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white"></div>
       </div>
     );
   }
 
   return (
-    <div className="w-64 min-h-screen h-full bg-black/10 backdrop-blur-sm fixed left-0 top-0 flex flex-col">
+    <div className="w-64 md:w-64 h-screen bg-black/10 backdrop-blur-sm flex flex-col overflow-hidden">
       <div className="flex-1 p-4 overflow-y-auto">
         <div className="space-y-4">
           {/* User info section when logged in */}
