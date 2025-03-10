@@ -20,7 +20,6 @@ export default function NavigationSidebar() {
     { path: '/', label: 'Home', requiresAuth: false },
     { path: '/posts', label: 'Posts', requiresAuth: false },
     { path: '/posts/create', label: 'Create Post', requiresAuth: true },
-    { path: '/createpost', label: 'CreatePost', requiresAuth: true },
     { path: '/groups', label: 'Groups', requiresAuth: true },
     { path: '/profile', label: 'Profile', requiresAuth: true },
     { path: '/auth/logout', label: 'Logout', requiresAuth: true },

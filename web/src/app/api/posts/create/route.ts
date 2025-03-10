@@ -22,13 +22,33 @@ export async function POST(request: NextRequest) {
     }
     
     // Get form data from the request
-    const formData = await request.formData();
+    const originalFormData = await request.formData();
+    
+    // Create a new FormData object for the backend
+    const backendFormData = new FormData();
+    
+    // Add title and content/body
+    backendFormData.append('title', originalFormData.get('title') as string);
+    backendFormData.append('body', originalFormData.get('content') as string);
+    
+    // Handle categories - backend expects a comma-separated string
+    const categories = originalFormData.getAll('categories');
+    if (categories.length > 0) {
+      backendFormData.append('categories', categories.join(','));
+    }
+    
+    // Handle media file
+    const mediaFile = originalFormData.get('media') as File;
+    if (mediaFile && mediaFile.size > 0) {
+      backendFormData.append('media', mediaFile, mediaFile.name);
+    }
     
     // Forward the request to the backend
-    const response = await axios.post(`${apiUrl}/posts`, formData, {
+    const response = await axios.post(`${apiUrl}/posts`, backendFormData, {
       headers: {
         // Forward cookies for authentication
         Cookie: request.headers.get('cookie') || '',
+        'Content-Type': 'multipart/form-data',
       },
       withCredentials: true
     });

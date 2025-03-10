@@ -17,6 +17,7 @@ interface Post {
   id: string;
   title?: string;
   content?: string;
+  media?: string;
   created_at?: string;
   author?: Author;
   categories?: Category[];
@@ -53,8 +54,8 @@ export default function Post({ categoryId }: PostProps) {
   const fetchPosts = useCallback(async () => {
     try {
       setLoading(true);
-      const url = categoryId
-        ? `/api/posts?category=${categoryId}`
+      const url = categoryId 
+        ? `/api/posts?category=${categoryId}` 
         : '/api/posts';
       
       const response = await fetch(url);
@@ -63,6 +64,7 @@ export default function Post({ categoryId }: PostProps) {
       }
       
       const data = await response.json();
+      console.log('Fetched posts:', data); // Debug log
       setPosts(data);
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -71,16 +73,24 @@ export default function Post({ categoryId }: PostProps) {
     }
   }, [categoryId]);
 
+  // Handle category click
+  const handleCategoryClick = (id: string) => {
+    if (categoryId === id) {
+      // If clicking the currently selected category, remove the filter
+      router.push('/posts');
+    } else {
+      // Otherwise, filter by the selected category
+      router.push(`/posts?category=${id}`);
+    }
+  };
+
+  // Fetch data on component mount and when categoryId changes
   useEffect(() => {
     fetchCategories();
     fetchPosts();
-  }, [fetchCategories, fetchPosts, categoryId, user]);
+  }, [fetchCategories, fetchPosts, categoryId]);
 
-  const handleCategoryClick = useCallback((categoryId: string) => {
-    router.push(`/posts?category=${categoryId}`);
-  }, [router]);
-
-  // Helper function to format time
+  // Format time since post creation
   const timeSince = (dateString: string) => {
     const date = new Date(dateString);
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -101,6 +111,80 @@ export default function Post({ categoryId }: PostProps) {
     if (interval > 1) return Math.floor(interval) + ' minutes';
     
     return Math.floor(seconds) + ' seconds';
+  };
+
+  // Helper function to determine media type
+  const getMediaType = (mediaUrl?: string) => {
+    if (!mediaUrl) return 'unknown';
+    
+    try {
+      // Check if the URL contains an extension
+      const urlParts = mediaUrl.split('.');
+      const extension = urlParts.length > 1 ? urlParts.pop()?.toLowerCase() : '';
+      
+      // Common image extensions
+      if (extension && ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(extension)) {
+        return 'image';
+      }
+      
+      // Common video extensions
+      if (extension && ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'].includes(extension)) {
+        return 'video';
+      }
+      
+      // If no extension or unrecognized, try to guess from the URL
+      if (mediaUrl.includes('/images/') || mediaUrl.includes('/img/')) {
+        return 'image';
+      }
+      
+      if (mediaUrl.includes('/videos/') || mediaUrl.includes('/video/')) {
+        return 'video';
+      }
+      
+      // Default to image for unrecognized media
+      return 'image';
+    } catch (error) {
+      console.error('Error determining media type:', error);
+      return 'image'; // Default to image on error
+    }
+  };
+
+  // Format media URL for display
+  const formatMediaUrl = (mediaUrl?: string) => {
+    if (!mediaUrl) return '';
+    
+    // If it's already an absolute URL, return it
+    if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
+      return mediaUrl;
+    }
+    
+    // If it's a relative path with backslashes (Windows style), convert to forward slashes
+    if (mediaUrl.includes('\\')) {
+      mediaUrl = mediaUrl.replace(/\\/g, '/');
+    }
+    
+    // Extract the filename from the path
+    // The backend stores files in "web/storage/filename"
+    let filename = mediaUrl;
+    
+    // Remove leading /web/storage/ or /storage/ if present
+    if (mediaUrl.startsWith('/web/storage/')) {
+      filename = mediaUrl.substring('/web/storage/'.length);
+    } else if (mediaUrl.startsWith('/storage/')) {
+      filename = mediaUrl.substring('/storage/'.length);
+    } else if (mediaUrl.startsWith('/')) {
+      // If it starts with a slash, remove it
+      filename = mediaUrl.substring(1);
+    }
+    
+    // If the filename still contains a path like "storage/filename", extract just the filename
+    if (filename.includes('storage/')) {
+      filename = filename.substring(filename.indexOf('storage/') + 'storage/'.length);
+    }
+    
+    // Return the URL to our media API route
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/api/media/${filename}`;
   };
 
   if (!posts || !posts.length) {
@@ -150,10 +234,23 @@ export default function Post({ categoryId }: PostProps) {
           )}
         </div>
 
-        <div className="text-center text-white p-4 sm:p-8 bg-gray-800 rounded-lg">
-          <p className="text-lg sm:text-xl">No posts available to display.</p>
-          <p className="mt-2 text-sm sm:text-base">Check back later or try a different category.</p>
-        </div>
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+          </div>
+        ) : (
+          <div className="text-center p-8 bg-white/5 backdrop-blur-sm rounded-lg">
+            <p className="text-gray-300 mb-4">No posts found.</p>
+            {user && (
+              <button
+                onClick={() => router.push('/posts/create')}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md inline-flex items-center"
+              >
+                Create your first post
+              </button>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -226,23 +323,70 @@ export default function Post({ categoryId }: PostProps) {
               
               <p className="text-gray-300 mb-4 sm:mb-5 text-sm sm:text-base leading-relaxed">{post.content || 'No content'}</p>
               
+              {/* Media display - always show media directly */}
+              {post.media && (
+                <div className="mb-4 sm:mb-5 rounded-lg overflow-hidden">
+                  {getMediaType(post.media) === 'image' ? (
+                    <div className="w-full max-h-96 bg-black/20 flex justify-center">
+                      <img 
+                        src={formatMediaUrl(post.media)} 
+                        alt={post.title || "Post image"} 
+                        className="object-contain max-h-96 rounded-lg"
+                        onError={(e) => {
+                          console.error('Image failed to load:', post.media);
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  ) : getMediaType(post.media) === 'video' ? (
+                    <video 
+                      src={formatMediaUrl(post.media)} 
+                      controls 
+                      className="w-full rounded-lg max-h-96 bg-black/20"
+                      onError={(e) => {
+                        console.error('Video failed to load:', post.media);
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full max-h-96 bg-black/20 flex justify-center">
+                      <img 
+                        src={formatMediaUrl(post.media)} 
+                        alt={post.title || "Post image"} 
+                        className="object-contain max-h-96 rounded-lg"
+                        onError={(e) => {
+                          console.error('Media failed to load:', post.media);
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+              
               <div className="flex gap-1.5 sm:gap-2 flex-wrap mb-4">
                 {post.categories && post.categories.map((category) => (
                   <span
                     key={category.id}
-                    className="bg-gray-700/50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm text-gray-200"
+                    className="px-2 py-1 bg-gray-700 text-gray-200 rounded-full text-xs"
                   >
                     {category.name}
                   </span>
                 ))}
               </div>
               
-              <div className="flex gap-4 sm:gap-6 mt-2">
-                <button className="flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors">
-                  <span className="text-lg">👍</span> <span className="text-sm sm:text-base">{post.likes || 0}</span>
+              <div className="flex items-center gap-4">
+                <button className="flex items-center gap-1.5 text-gray-300 hover:text-blue-400 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905a3.61 3.61 0 01-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                  </svg>
+                  <span>{post.likes || 0}</span>
                 </button>
-                <button className="flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors">
-                  <span className="text-lg">👎</span> <span className="text-sm sm:text-base">{post.dislikes || 0}</span>
+                <button className="flex items-center gap-1.5 text-gray-300 hover:text-red-400 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2" />
+                  </svg>
+                  <span>{post.dislikes || 0}</span>
                 </button>
               </div>
             </div>

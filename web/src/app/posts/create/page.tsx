@@ -1,28 +1,40 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import MainLayout from '@/components/Layout/MainLayout';
+import Image from 'next/image';
+
+interface Category {
+  id: string;
+  name: string;
+}
 
 export default function CreatePostPage() {
-  const [formData, setFormData] = useState({
-    title: '',
-    body: '',
-    categories: [] as string[]
-  });
-  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [formSuccess, setFormSuccess] = useState<boolean>(false);
-  const { user } = useAuth();
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const router = useRouter();
+  const { user } = useAuth();
 
-  // Fetch categories when the component mounts
+  // Fetch categories on component mount
   useEffect(() => {
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+
     const fetchCategories = async () => {
       try {
-        setLoading(true);
         const response = await fetch('/api/categories');
         if (!response.ok) {
           throw new Error('Failed to fetch categories');
@@ -31,48 +43,95 @@ export default function CreatePostPage() {
         setCategories(data);
       } catch (error) {
         console.error('Error fetching categories:', error);
-      } finally {
-        setLoading(false);
+        setError('Failed to load categories. Please try again later.');
       }
     };
 
     fetchCategories();
-  }, []);
+  }, [user, router]);
 
-  const handleCreatePost = async (e: FormEvent) => {
+  // Handle category selection
+  const handleCategoryChange = (categoryId: string) => {
+    setSelectedCategories(prev => {
+      if (prev.includes(categoryId)) {
+        return prev.filter(id => id !== categoryId);
+      } else {
+        return [...prev, categoryId];
+      }
+    });
+  };
+
+  // Handle media file selection
+  const handleMediaChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setMediaFile(file);
+    
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setMediaPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setMediaPreview(null);
+    }
+  };
+
+  // Handle media removal
+  const handleRemoveMedia = () => {
+    setMediaFile(null);
+    setMediaPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
-    // Validate form
-    if (!formData.title.trim()) {
-      setFormError('Title is required');
+    if (!user) {
+      setError('You must be logged in to create a post');
       return;
     }
     
-    if (!formData.body.trim()) {
-      setFormError('Content is required');
+    if (!title.trim() && !content.trim()) {
+      setError('Please provide either a title or content for your post');
       return;
     }
     
-    if (formData.categories.length === 0) {
-      setFormError('Please select at least one category');
+    if (selectedCategories.length === 0) {
+      setError('Please select at least one category');
       return;
     }
+    
+    setLoading(true);
+    setError('');
     
     try {
-      setFormError(null);
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('content', content);
       
-      // Create FormData object
-      const postFormData = new FormData();
-      postFormData.append('title', formData.title);
-      postFormData.append('body', formData.body);
+      // Append each category ID separately
+      selectedCategories.forEach(categoryId => {
+        formData.append('categories', categoryId);
+      });
       
-      // Append categories as a comma-separated string
-      postFormData.append('categories', formData.categories.join(','));
+      if (mediaFile) {
+        formData.append('media', mediaFile);
+      }
       
-      // Submit the form data
+      console.log('Submitting form data:', {
+        title,
+        content,
+        categories: selectedCategories,
+        hasMedia: !!mediaFile
+      });
+      
       const response = await fetch('/api/posts/create', {
         method: 'POST',
-        body: postFormData,
+        body: formData,
       });
       
       if (!response.ok) {
@@ -80,58 +139,34 @@ export default function CreatePostPage() {
         throw new Error(errorData.message || 'Failed to create post');
       }
       
-      // Show success message
-      setFormSuccess(true);
+      setSuccess(true);
       
       // Reset form
-      setFormData({
-        title: '',
-        body: '',
-        categories: []
-      });
+      setTitle('');
+      setContent('');
+      setSelectedCategories([]);
+      setMediaFile(null);
+      setMediaPreview(null);
       
-      // Redirect to posts page after a delay
+      // Redirect to posts page after a short delay
       setTimeout(() => {
         router.push('/posts');
-      }, 2000);
+      }, 1500);
       
     } catch (error) {
       console.error('Error creating post:', error);
-      setFormError(error instanceof Error ? error.message : 'An unknown error occurred');
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleCategoryChange = (categoryId: string) => {
-    setFormData(prev => {
-      const categories = [...prev.categories];
-      const index = categories.indexOf(categoryId);
-      
-      if (index === -1) {
-        categories.push(categoryId);
-      } else {
-        categories.splice(index, 1);
-      }
-      
-      return {
-        ...prev,
-        categories
-      };
-    });
-  };
-
-  // If user is not authenticated, redirect to login
+  // If user is not authenticated, show loading state
   if (!user) {
     return (
       <MainLayout>
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">Authentication Required</h2>
-          <p className="text-gray-300 mb-6">You must be logged in to create a post.</p>
-          <button 
-            onClick={() => router.push('/auth/login')}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-bold"
-          >
-            Login
-          </button>
+        <div className="flex justify-center items-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
         </div>
       </MainLayout>
     );
@@ -139,90 +174,145 @@ export default function CreatePostPage() {
 
   return (
     <MainLayout>
-      <div className="container mx-auto px-4 py-8">
-        <h2 className="text-2xl font-bold text-white mb-6">Create New Post</h2>
-        
-        {formError && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {formError}
-          </div>
-        )}
-        
-        {formSuccess && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-            Post created successfully! Redirecting to posts page...
-          </div>
-        )}
-        
-        <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-          <form onSubmit={handleCreatePost}>
-            <div className="mb-4">
-              <label htmlFor="title" className="block text-gray-700 font-medium mb-2">
-                Title
+      <div className="container mx-auto px-4 py-8 min-h-screen">
+        <div className="max-w-2xl mx-auto bg-white/5 backdrop-blur-sm p-6 rounded-lg shadow-lg">
+          <h1 className="text-2xl font-bold mb-6 text-white">Create a New Post</h1>
+          
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/20 border border-red-500 rounded-md">
+              <p className="text-red-500">{error}</p>
+            </div>
+          )}
+          
+          {success && (
+            <div className="mb-6 p-4 bg-green-500/20 border border-green-500 rounded-md">
+              <p className="text-green-500">Post created successfully! Redirecting...</p>
+            </div>
+          )}
+          
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-1">
+                Title (Optional)
               </label>
               <input
                 type="text"
                 id="title"
-                value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter post title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                placeholder="Enter a title for your post"
               />
             </div>
             
-            <div className="mb-4">
-              <label htmlFor="body" className="block text-gray-700 font-medium mb-2">
+            <div>
+              <label htmlFor="content" className="block text-sm font-medium text-gray-300 mb-1">
                 Content
               </label>
               <textarea
-                id="body"
-                value={formData.body}
-                onChange={(e) => setFormData({...formData, body: e.target.value})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 h-32 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Write your post content here..."
+                id="content"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                rows={6}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                placeholder="What's on your mind?"
               ></textarea>
             </div>
             
-            <div className="mb-4">
-              <label className="block text-gray-700 font-medium mb-2">
-                Categories
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Categories (Select at least one)
               </label>
-              {loading ? (
-                <div className="animate-pulse h-10 bg-gray-200 rounded"></div>
-              ) : categories.length === 0 ? (
-                <div className="text-center p-4 bg-gray-100 rounded">
-                  <p className="text-gray-700 mb-2">No categories available.</p>
+              <div className="flex flex-wrap gap-2">
+                {categories.length === 0 ? (
+                  <p className="text-gray-400 text-sm">Loading categories...</p>
+                ) : (
+                  categories.map((category) => (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => handleCategoryChange(category.id)}
+                      className={`px-3 py-1.5 rounded-full text-sm ${
+                        selectedCategories.includes(category.id)
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      }`}
+                    >
+                      {category.name}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Media (Optional)
+              </label>
+              <div className="flex flex-col space-y-3">
+                <div className="flex items-center">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleMediaChange}
+                    accept="image/*,video/*"
+                    className="hidden"
+                    id="media-upload"
+                  />
+                  <label
+                    htmlFor="media-upload"
+                    className="px-4 py-2 bg-gray-700 text-gray-200 rounded-md cursor-pointer hover:bg-gray-600 transition-colors"
+                  >
+                    Select Image or Video
+                  </label>
+                  {mediaFile && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveMedia}
+                      className="ml-3 text-red-400 hover:text-red-300"
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {categories.map(category => (
-                    <label key={category.id} className="inline-flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={formData.categories.includes(category.id)}
-                        onChange={() => handleCategoryChange(category.id)}
-                        className="form-checkbox h-5 w-5 text-blue-600"
+                
+                {mediaPreview && (
+                  <div className="mt-3 max-w-md">
+                    {mediaFile?.type.startsWith('image/') ? (
+                      <img
+                        src={mediaPreview}
+                        alt="Preview"
+                        className="max-h-60 rounded-md object-contain bg-black/20"
                       />
-                      <span className="ml-2 text-gray-700">{category.name}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
+                    ) : mediaFile?.type.startsWith('video/') ? (
+                      <video
+                        src={mediaPreview}
+                        controls
+                        className="max-h-60 w-full rounded-md bg-black/20"
+                      ></video>
+                    ) : null}
+                    <p className="mt-1 text-sm text-gray-400">{mediaFile?.name}</p>
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="flex justify-end">
               <button
                 type="button"
                 onClick={() => router.push('/posts')}
-                className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-md mr-2"
+                className="px-4 py-2 bg-gray-700 text-white rounded-md mr-3 hover:bg-gray-600 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
+                disabled={loading || success}
+                className={`px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors ${
+                  (loading || success) && 'opacity-70 cursor-not-allowed'
+                }`}
               >
-                Create Post
+                {loading ? 'Creating...' : 'Create Post'}
               </button>
             </div>
           </form>

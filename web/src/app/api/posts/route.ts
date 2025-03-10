@@ -6,6 +6,10 @@ interface BackendPost {
   id: number;
   title: string;
   body: string;
+  media: {
+    String: string;
+    Valid: boolean;
+  } | null;
   likes: number;
   dislikes: number;
   created_at: string;
@@ -22,7 +26,9 @@ interface BackendPost {
 // Define the frontend post structure
 interface FrontendPost {
   id: string;
+  title?: string;
   content: string;
+  media?: string;
   author: {
     id: string;
     username: string;
@@ -58,7 +64,9 @@ export async function GET(request: NextRequest) {
     // Transform the data to match the frontend structure
     const frontendPosts: FrontendPost[] = backendPosts.map((post: BackendPost) => ({
       id: String(post.id),
-      content: post.body || post.title || '', // Use body or fallback to title
+      title: post.title || undefined,
+      content: post.body || '',
+      media: post.media && post.media.Valid ? post.media.String : undefined,
       author: {
         id: String(post.user?.id || '0'),
         username: post.user?.username || 'Unknown User'
