@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import axios from 'axios';
 
 // Define the backend post structure
 interface BackendPost {
@@ -21,6 +22,7 @@ interface BackendPost {
     id: number;
     name: string;
   }>;
+  interaction?: number; // User's interaction with this post
 }
 
 // Define the frontend post structure
@@ -40,6 +42,7 @@ interface FrontendPost {
   created_at: string;
   likes: number;
   dislikes: number;
+  interaction?: number; // User's interaction with this post
 }
 
 export async function GET(request: NextRequest) {
@@ -48,18 +51,25 @@ export async function GET(request: NextRequest) {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
   
   try {
-    const response = await fetch(`${apiUrl}/posts${categoryId ? `?category=${categoryId}` : ''}`);
+    // Get the session cookie
+    const sessionCookie = request.cookies.get('session')?.value || '';
     
-    if (!response.ok) {
-      throw new Error(`API responded with status: ${response.status}`);
-    }
+    // Fetch posts with the session cookie to get user-specific data
+    const response = await axios.get(
+      `${apiUrl}/posts${categoryId ? `?category=${categoryId}` : ''}`,
+      {
+        headers: {
+          Cookie: sessionCookie ? `session=${sessionCookie}` : '',
+        },
+        withCredentials: true
+      }
+    );
     
-    const backendPosts = await response.json();
-    
-    // If backend returns null or not an array, return an empty array
-    if (!backendPosts || !Array.isArray(backendPosts)) {
+    if (!response.data || !Array.isArray(response.data)) {
       return NextResponse.json([]);
     }
+    
+    const backendPosts = response.data;
     
     // Transform the data to match the frontend structure
     const frontendPosts: FrontendPost[] = backendPosts.map((post: BackendPost) => ({
@@ -77,7 +87,8 @@ export async function GET(request: NextRequest) {
       })),
       created_at: post.created_at,
       likes: post.likes || 0,
-      dislikes: post.dislikes || 0
+      dislikes: post.dislikes || 0,
+      interaction: post.interaction // Include the user's interaction with this post
     }));
     
     return NextResponse.json(frontendPosts);

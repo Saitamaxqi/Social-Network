@@ -99,7 +99,22 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'notification' && data.notification) {
-            setNotifications(prev => [data.notification, ...(prev || [])]);
+            // Ensure the notification object has the expected structure
+            const notification = data.notification;
+            
+            // Convert backend notification format to frontend format if needed
+            const formattedNotification: Notification = {
+              id: notification.ID || notification.id || 0,
+              user_id: notification.UserID || notification.user_id || 0,
+              text: notification.Text || notification.text || '',
+              seen: notification.Seen || notification.seen || false,
+              sender_id: notification.SenderID || notification.sender_id || 0,
+              type: notification.Type || notification.type || '',
+              link_id: notification.LinkID || notification.link_id || 0,
+              date: notification.Date || notification.date || new Date().toISOString(),
+            };
+            
+            setNotifications(prev => [formattedNotification, ...(prev || [])]);
           }
         } catch (error) {
           console.error('Error handling WebSocket message:', error);
