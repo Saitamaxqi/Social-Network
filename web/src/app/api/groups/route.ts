@@ -85,32 +85,33 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    console.log('POST /api/groups - Starting group creation');
+    
     // Get auth cookie from the request
     const authCookie = request.cookies.get('session')?.value || request.cookies.get('session_token')?.value;
+    console.log('Auth cookie present:', !!authCookie);
     
     if (!authCookie) {
       console.log('No session cookie found in groups API');
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
     
-    // Get request body
+    // Parse JSON data from the request
+    console.log('Attempting to parse JSON data');
     const body = await request.json();
-    const { title, description } = body;
+    const title = body.title;
+    const description = body.description || '';
+    
+    console.log('Received JSON data:', { title, description });
     
     if (!title) {
+      console.log('Title is required but was not provided');
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
     
     // Forward the request to the backend API
     const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/groups`;
     console.log(`Creating group at backend URL: ${backendUrl}`);
-    
-    // Create FormData for the backend API
-    const formData = new FormData();
-    formData.append('title', title);
-    if (description) {
-      formData.append('description', description);
-    }
     
     // Log the request details for debugging
     console.log('Request details:', {
@@ -126,12 +127,32 @@ export async function POST(request: NextRequest) {
       {
         method: 'POST',
         headers: {
+          // Set the session cookie in the Cookie header
           'Cookie': `session=${authCookie}`,
+          'Content-Type': 'application/json',
+          // Add Authorization header as an alternative way to pass the session
+          'Authorization': `Bearer ${authCookie}`,
         },
-        body: formData,
-        credentials: 'include',
+        body: JSON.stringify({
+          title,
+          description,
+        }),
+        // Don't use credentials: 'include' when we're manually setting the Cookie header
+        // as it can cause issues with CORS and duplicate cookies
+        cache: 'no-store',
       }
     );
+  
+    // Add detailed logging for debugging
+    console.log(`Response status: ${response.status}`);
+    console.log(`Response status text: ${response.statusText}`);
+    
+    // Try to log response headers
+    const headers: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      headers[key] = value;
+    });
+    console.log('Response headers:', headers);
     
     if (!response.ok) {
       console.log(`Backend returned status: ${response.status} when creating group`);

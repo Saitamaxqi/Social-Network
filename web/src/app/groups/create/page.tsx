@@ -29,7 +29,9 @@ export default function CreateGroupPage() {
       setIsSubmitting(true);
       setError('');
       
-      // Call the API to create a new group
+      console.log('Submitting group with:', { title, description });
+      
+      // Call the API to create a new group with JSON data
       const response = await fetch('/api/groups', {
         method: 'POST',
         headers: {
@@ -37,17 +39,29 @@ export default function CreateGroupPage() {
         },
         body: JSON.stringify({
           title,
-          description,
+          description: description || '',
         }),
         credentials: 'include',
       });
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Error: ${response.status}`);
+      console.log('Response status:', response.status);
+      
+      // Try to get the response text for better error handling
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
+      
+      let data;
+      try {
+        // Try to parse the response as JSON
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse response as JSON:', parseError);
+        throw new Error(`Server returned invalid JSON. Status: ${response.status}`);
       }
       
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || `Error: ${response.status}`);
+      }
       
       // Redirect to the newly created group page or groups list
       if (data.id) {
