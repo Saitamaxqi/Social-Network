@@ -128,8 +128,8 @@ func SavePrivateMessage(senderID, recipientID int, content string) error {
 
 func GetAllUsersOrderedByRecentChats(userID int) ([]User, error) {
     query := `
-    SELECT id, username FROM (
-        SELECT u.id, u.username, MAX(pm.created_at) as last_message
+    SELECT id, username, avatar FROM (
+        SELECT u.id, u.username, u.avatar, MAX(pm.created_at) as last_message
         FROM users u
         LEFT JOIN private_messages pm ON (u.id = pm.sender_id AND pm.recipient_id = ?)
                                       OR (u.id = pm.recipient_id AND pm.sender_id = ?)
@@ -147,7 +147,7 @@ func GetAllUsersOrderedByRecentChats(userID int) ([]User, error) {
     var users []User
     for rows.Next() {
         var user User
-        err := rows.Scan(&user.ID, &user.Username)
+        err := rows.Scan(&user.ID, &user.Username,  &user.Avatar)
         if err != nil {
             return nil, err
         }

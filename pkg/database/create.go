@@ -17,6 +17,12 @@ func CreateTables() error {
 		&models.Notification{},
 		&models.PrivateMessage{},
 		&models.Follow{},
+		&models.Group{},
+		&models.GroupMember{},
+		&models.GroupPost{},
+		&models.GroupEvent{},
+		&models.GroupEventResponse{},
+		&models.GroupMessage{},
 	}
 
 	for _, model := range models {

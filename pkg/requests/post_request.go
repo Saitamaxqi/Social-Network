@@ -16,7 +16,7 @@ func PostRequest(next http.HandlerFunc) http.HandlerFunc {
 				"title":      {"required", "min:3"},
 				"body":       {"required", "min:3"},
 				"categories": {"required", "array:1,10"},
-				"media":      {"file:20,M;PNG,JPG,GIF"},
+				"media":      {"file:20,M;PNG,JPG,GIF,png,jpg,gif"},
 			}
 		}
 		if err := rules.Validate(r); err != nil {

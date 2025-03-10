@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import styles from './UsersSidebar.module.css';
 
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -15,27 +17,75 @@ interface ChatUser {
   };
 }
 
+interface FollowStatus {
+  id: number;
+  status: string; // 'accepted' | 'pending' | 'none'
+  follower_id?: number;
+  following_id?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 interface ChatsResponse {
   onlineUsers: Record<string, boolean>;
   recentChats: ChatUser[];
+  followStatuses: Record<string, FollowStatus>;
 }
+
+// Helper function to get follow button text based on status
+const getFollowButtonText = (status: FollowStatus): string => {
+  switch (status.status) {
+    case 'accepted':
+      return 'Following';
+    case 'pending':
+      return 'Pending';
+    case 'none':
+      return 'Follow';
+    default:
+      return 'Follow';
+  }
+};
+
+// Helper function to get follow button styles based on status
+const getFollowButtonStyles = (status: FollowStatus): string => {
+  switch (status.status) {
+    case 'accepted':
+      return styles.followButtonAccepted;
+    case 'pending':
+      return styles.followButtonPending;
+    case 'none':
+      return styles.followButtonNone;
+    default:
+      return styles.followButtonNone;
+  }
+};
 
 export default function UsersSidebar() {
   const [chatData, setChatData] = useState<ChatsResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     if (!user) return;
     
     const fetchChats = async () => {
       try {
+        setIsLoading(true);
+        setError(null);
         const response = await fetch('/api/users');
         if (response.ok) {
           const data = await response.json();
           setChatData(data);
+        } else {
+          throw new Error('Failed to fetch chats');
         }
       } catch (error) {
         console.error('Error fetching chats:', error);
+        setError('Failed to load chats');
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -47,40 +97,110 @@ export default function UsersSidebar() {
     return null;
   }
 
+  // Function to navigate to chat with a specific user
+  const navigateToChat = (userId: number) => {
+    router.push(`/chats?userId=${userId}`);
+  };
+
   return (
-    <div className="w-64 min-h-screen h-full bg-black/10 backdrop-blur-sm fixed right-0 top-0 flex flex-col">
-      <div className="flex-1 p-4 overflow-y-auto">
-        <h2 className="text-xl font-semibold mb-4 text-white text-center">Recent Chats</h2>
-        <div className="flex flex-col gap-4">
-          {chatData?.recentChats.map((user) => (
-            <Link
-              key={user.id}
-              href={`/profile/${user.id}`}
-              className="flex items-center w-full px-4 py-2 text-white bg-black/30 hover:bg-black/50 rounded-lg transition-colors duration-200"
-            >
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center">
-                    {user.avatar.Valid ? (
-                      <Image
-                        src={user.avatar.String}
-                        alt={user.username}
-                        width={32}
-                        height={32}
-                        className="rounded-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-white text-sm">{user.username[0].toUpperCase()}</span>
-                    )}
+    <div className={styles.sidebar}>
+      <div className={styles.sidebarContent}>
+        <div className={styles.userList}>
+          {isLoading ? (
+            <div className={styles.loadingText}>Loading users...</div>
+          ) : error ? (
+            <div className={styles.errorText}>{error}</div>
+          ) : !chatData?.recentChats?.length ? (
+            <div className={styles.emptyText}>No users found</div>
+          ) : (
+            chatData.recentChats.map((user) => (
+              <div key={user.id} className={styles.userCard}>
+                <Link href={`/profile/${user.id}`} className={styles.userLink}>
+                  <div className={styles.avatarContainer}>
+                    <div className={styles.avatar}>
+                      {user.avatar?.Valid ? (
+                        <Image
+                          src={`http://localhost:8080${user.avatar.String}`}
+                          alt={user.username}
+                          width={32}
+                          height={32}
+                          className={styles.avatarImage}
+                        />
+                      ) : (
+                        <span className={styles.avatarLetter}>{user.username[0].toUpperCase()}</span>
+                      )}
+                    </div>
+                    {/* Online/Offline status indicator */}
+                    <div 
+                      className={`${styles.onlineStatus} ${chatData.onlineUsers[user.username] ? styles.online : styles.offline}`}
+                      title={chatData.onlineUsers[user.username] ? 'Online' : 'Offline'}
+                    />
                   </div>
-                  {chatData.onlineUsers[user.id.toString()] && (
-                    <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-gray-900" />
+                  <span className={styles.username} title={user.username}>
+                    {user.username}
+                  </span>
+                </Link>
+                {/* Chat icon button */}
+                <div className={styles.buttonContainer}>
+                  {/* Follow Button */}
+                  {chatData.followStatuses[user.username] !== undefined && (
+                    <button
+                      onClick={async (e) => {
+                        e.preventDefault(); // Prevent navigation
+                        try {
+                          const currentStatus = chatData.followStatuses[user.username];
+                          const isFollowing = currentStatus.status !== 'none';
+                          
+                          const formData = new FormData();
+                          formData.append('user_id', user.id.toString());
+                          
+                          const endpoint = !isFollowing ? 
+                            '/api/follow' : 
+                            `/api/follow/${currentStatus.id}`;
+                            
+                          const response = await fetch(endpoint, {
+                            method: !isFollowing ? 'POST' : 'DELETE',
+                            credentials: 'include',
+                            body: !isFollowing ? formData : undefined,
+                          });
+                          
+                          if (!response.ok) throw new Error('Failed to update follow status');
+                          
+                          const data = await response.json();
+                          
+                          // Update local state
+                          setChatData(prev => prev ? {
+                            ...prev,
+                            followStatuses: {
+                              ...prev.followStatuses,
+                              [user.username]: !isFollowing ? 
+                                { id: data.id, status: data.status } : 
+                                { id: 0, status: 'none' as const }
+                            }
+                          } : null);
+                        } catch (error) {
+                          console.error('Error updating follow status:', error);
+                        }
+                      }}
+                      className={`${styles.followButton} ${getFollowButtonStyles(chatData.followStatuses[user.username])}`}
+                    >
+                      {getFollowButtonText(chatData.followStatuses[user.username])}
+                    </button>
                   )}
+                  {/* Chat Button */}
+                  <button 
+                    onClick={() => navigateToChat(user.id)}
+                    className={styles.chatButton}
+                    title="Chat with user"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className={styles.chatIcon} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </button>
                 </div>
-                <span className="text-sm font-medium">{user.username}</span>
               </div>
-            </Link>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>

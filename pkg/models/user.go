@@ -230,15 +230,8 @@ func (u *User) NewSession(duration time.Duration) (*Session, error) {
 		return nil, errors.New("user does not exist")
 	}
 
-	expiresAt := time.Now().Add(duration)
-
-	if expiresAt.Before(time.Now()) {
-		return nil, errors.New("session expires at is in the past")
-	}
-
 	session := &Session{
-		UserID:    u.ID,
-		ExpiresAt: expiresAt,
+		UserID: u.ID,
 	}
 
 	err := session.Create()
@@ -426,7 +419,7 @@ func (u *User) ModeratorRequests() ([]*User, error) {
 // Notifications
 
 func (u *User) Notifications() ([]*Notification, error) {
-	rows, err := DB.Query(`SELECT * FROM notifications WHERE user_id = ?`, u.ID)
+	rows, err := DB.Query(`SELECT * FROM notifications WHERE user_id = ? ORDER BY date DESC`, u.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -528,4 +521,3 @@ func (u *User) GetActivity() (map[string]interface{}, error) {
         "following": following,
     }, nil
 }
-

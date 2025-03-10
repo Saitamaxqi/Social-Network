@@ -50,11 +50,35 @@ func RegisterAPIs() {
 	GET("/notifications", controllers.NotificationController, requests.DefaultRequest, middlewares.AuthMiddleware)      // Index
 	PUT("/notifications/{id}", controllers.NotificationController, requests.DefaultRequest, middlewares.AuthMiddleware) // Update
 	PUT("/notifications", controllers.NotificationController, requests.DefaultRequest, middlewares.AuthMiddleware)      // Update all
+	DELETE("/notifications/{id}", controllers.NotificationController, requests.DefaultRequest, middlewares.AuthMiddleware)   // Delete
 	// Auth routes (Done)
 	POST("/login", controllers.AuthController, requests.LoginRequest, middlewares.DefaultAPIMiddleware)       // Login
 	GET("/login-session", controllers.AuthController, requests.DefaultRequest, middlewares.AuthMiddleware)    // Login session
 	GET("/check-session", controllers.AuthController, requests.DefaultRequest, middlewares.AuthMiddleware)    // Check session
-	POST("/register", controllers.AuthController, requests.RegisterRequest, middlewares.DefaultAPIMiddleware) // Register
+	POST("/register", controllers.AuthController, requests.RegisterRequest, middlewares.DefaultAPIMiddleware)
+
+	// Group routes
+	GET("/groups", controllers.GetGroups, requests.DefaultRequest, middlewares.AuthMiddleware)                           // Get all groups
+	POST("/groups", controllers.CreateGroup, requests.GroupRequest, middlewares.AuthMiddleware)                          // Create new group
+
+	// Group membership routes
+	POST("/groups/{id}/join", controllers.RequestToJoinGroup, requests.DefaultRequest, middlewares.AuthMiddleware)      // Request to join group
+	POST("/groups/{id}/invite", controllers.InviteToGroup, requests.GroupMemberRequest, middlewares.AuthMiddleware)     // Invite user to group
+	POST("/groups/{id}/respond-invite", controllers.RespondToInvitation, requests.DefaultRequest, middlewares.AuthMiddleware)  // Respond to invitation
+	POST("/groups/{id}/respond-request", controllers.RespondToJoinRequest, requests.DefaultRequest, middlewares.AuthMiddleware)  // Respond to join request
+
+	// Group posts routes
+	GET("/groups/{id}/posts", controllers.GetGroupPosts, requests.DefaultRequest, middlewares.AuthMiddleware)           // Get group posts
+	POST("/groups/{id}/posts", controllers.CreateGroupPost, requests.GroupPostRequest, middlewares.AuthMiddleware)      // Create group post
+
+	// Group events routes
+	GET("/groups/{id}/events", controllers.GetGroupEvents, requests.DefaultRequest, middlewares.AuthMiddleware)         // Get group events
+	POST("/groups/{id}/events", controllers.CreateGroupEvent, requests.GroupEventRequest, middlewares.AuthMiddleware)    // Create group event
+	POST("/groups/{id}/events/{event_id}/respond", controllers.RespondToEvent, requests.GroupEventResponseRequest, middlewares.AuthMiddleware)  // Respond to event
+
+	// Group messages routes
+	GET("/groups/{id}/messages", controllers.GetGroupMessages, requests.DefaultRequest, middlewares.AuthMiddleware)     // Get group messages
+	POST("/groups/{id}/messages", controllers.SendGroupMessage, requests.GroupMessageRequest, middlewares.AuthMiddleware)  // Send group message
 	GET("/logout", controllers.AuthController, requests.DefaultRequest, middlewares.AuthMiddleware)           // Logout
 	// Third party routes (Skip)
 	WEB("/login/google", controllers.ThirdPartyController, requests.DefaultRequest, middlewares.DefaultAPIMiddleware)    // Google auth

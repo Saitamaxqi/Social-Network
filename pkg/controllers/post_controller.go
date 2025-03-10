@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"forum/pkg/consts"
 	"forum/pkg/models"
@@ -90,12 +89,6 @@ func CreatePost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	postJSON, _ := json.Marshal(map[string]interface{}{
-        "type": "new_post",
-        "post": post,
-    })
-    hub.Broadcast <- postJSON
 
 	RespondWithJSON(w, http.StatusCreated, post)
 }
@@ -327,23 +320,16 @@ func InteractPost(w http.ResponseWriter, r *http.Request) {
 		Date:     time.Now(),
 	}
 	
-	notificationJSON, _ := json.Marshal(map[string]interface{}{
-        "type": "notification",
-        "notification": notification,
-    })
-    hub.Broadcast <- notificationJSON
+	hub.SendToUser(post.UserID, map[string]interface{}{
+		"type": "notification",
+		"notification": notification,
+	})
 
 	err = notification.Create()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	interactionJSON, _ := json.Marshal(map[string]interface{}{
-        "type": "post_interaction",
-        "post": post,
-        "interaction": interaction,
-    })
-    hub.Broadcast <- interactionJSON
 
 	RespondWithJSON(w, http.StatusOK, map[string]interface{}{"interaction": interaction})
 }
@@ -395,23 +381,16 @@ func CommentPost(w http.ResponseWriter, r *http.Request) {
 		LinkID:   comment.ID,
 		Date:     time.Now(),
 	}
-	notificationJSON, _ := json.Marshal(map[string]interface{}{
-        "type": "notification",
-        "notification": notification,
-    })
-    hub.Broadcast <- notificationJSON
+	hub.SendToUser(post.UserID, map[string]interface{}{
+		"type": "notification",
+		"notification": notification,
+	})
 
 	err = notification.Create()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	commentJSON, _ := json.Marshal(map[string]interface{}{
-        "type": "new_comment",
-        "comment": comment,
-    })
-    hub.Broadcast <- commentJSON
 
 	RespondWithJSON(w, http.StatusOK, comment)
 }
