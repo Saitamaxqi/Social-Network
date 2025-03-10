@@ -41,7 +41,7 @@ export default function NavigationSidebar() {
   }
 
   return (
-    <div className="w-64 md:w-64 h-screen bg-black/10 backdrop-blur-sm flex flex-col overflow-hidden">
+    <div className="w-64 md:w-64 h-screen bg-black/10 backdrop-blur-sm flex flex-col">
       <div className="flex-1 p-4 overflow-y-auto">
         <div className="space-y-4">
           {/* User info section when logged in */}
@@ -56,7 +56,7 @@ export default function NavigationSidebar() {
                 </div>
               </div>
               {/* Notifications */}
-              <div className="mt-4 flex justify-center">
+              <div className="mt-4 w-10 h-10 mx-auto relative">
                 <NotificationDropdown />
               </div>
             </div>

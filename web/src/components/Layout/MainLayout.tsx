@@ -9,8 +9,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const [usersSidebarOpen, setUsersSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[url('/images/soul-society-bg.jpg')] bg-cover bg-center bg-fixed">
-      <div className="min-h-screen bg-black/40 backdrop-blur-sm flex flex-col md:flex-row relative">
+    <div className="h-screen overflow-hidden bg-[url('/images/soul-society-bg.jpg')] bg-cover bg-center bg-fixed">
+      <div className="h-screen bg-black/40 backdrop-blur-sm flex flex-col md:flex-row relative">
         {/* Mobile Menu Button - only visible on small screens */}
         <div className="fixed top-4 left-4 z-50 md:hidden">
           <button 
@@ -38,19 +38,21 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         </div>
 
         {/* Left Sidebar - Navigation */}
-        <div className={`${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out fixed md:relative z-40 md:z-auto`}>
+        <div className={`${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out fixed md:relative z-40 md:z-auto h-full`}>
           <NavigationSidebar />
         </div>
 
-        {/* Main Content */}
-        <main className="flex-1 flex items-start justify-center p-4 md:p-8 overflow-y-auto mt-14 md:mt-0 min-h-screen">
-          <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-4 md:p-8 w-full max-w-4xl shadow-xl">
-            {children}
+        {/* Main Content - Scrollable */}
+        <main className="flex-1 flex items-start justify-center p-4 md:p-8 overflow-hidden mt-14 md:mt-0 h-screen">
+          <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-4 md:p-8 w-full max-w-4xl shadow-xl h-full overflow-hidden">
+            <div className="h-full overflow-y-auto pr-2">
+              {children}
+            </div>
           </div>
         </main>
 
         {/* Right Sidebar - Users */}
-        <div className={`${usersSidebarOpen ? 'translate-x-0' : 'translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out fixed md:relative z-40 md:z-auto right-0 top-0`}>
+        <div className={`${usersSidebarOpen ? 'translate-x-0' : 'translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out fixed md:relative z-40 md:z-auto right-0 top-0 h-full`}>
           <UsersSidebar />
         </div>
 
