@@ -55,15 +55,11 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ recipient, isOnline }) => {
           {recipient.username.charAt(0).toUpperCase()}
         </div>
         {/* Online/offline status indicator that changes color based on status */}
-        <div className={`user-status ${isOnline ? 'online' : 'offline'}`}></div>
       </div>
       
       {/* User information section */}
       <div>
         <div className="font-medium text-white">{recipient.username}</div>
-        <div className="text-xs text-white/70">
-          {isOnline ? 'Online' : 'Offline'}
-        </div>
       </div>
     </div>
   );

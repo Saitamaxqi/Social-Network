@@ -20,8 +20,7 @@ export default function NavigationSidebar() {
     { path: '/', label: 'Home', requiresAuth: false },
     { path: '/posts', label: 'Posts', requiresAuth: false },
     { path: '/createpost', label: 'CreatePost', requiresAuth: true },
-    { path: '/chats', label: 'Chats', requiresAuth: true },
-    { path: '/notifications', label: 'Notifications', requiresAuth: true },
+    { path: '/groups', label: 'Groups', requiresAuth: true },
     { path: '/profile', label: 'Profile', requiresAuth: true },
     // { path: user ? getProfilePath(user.id) : '/profile', label: 'Profile', requiresAuth: true }, // Dynamically set profile path
     { path: '/auth/logout', label: 'Logout', requiresAuth: true },

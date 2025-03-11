@@ -1,81 +1,93 @@
 package controllers
 
 import (
-	// "encoding/json"
-	// "encoding/json"
-	"encoding/json"
 	"fmt"
 	"forum/pkg/consts"
 	"forum/pkg/models"
+	"net/http"
 	"strconv"
 	"time"
-
-	// "forum/pkg/utils"
-	"net/http"
 )
 
-
 func OnlineUsersController(users []models.User) map[string]bool {
-    onlineUsers := make(map[string]bool)
+	onlineUsers := make(map[string]bool)
 
-    for _, user := range users {
-        session, err := models.GetSessionByUserID(user.ID)
-        if err != nil {
-            onlineUsers[user.Username] = false
-            continue
-        }
-        onlineUsers[user.Username] = !session.Expired()
-    }
-    return onlineUsers
+	for _, user := range users {
+		session, err := models.GetSessionByUserID(user.ID)
+		if err != nil {
+			onlineUsers[user.Username] = false
+			continue
+		}
+		onlineUsers[user.Username] = !session.Expired()
+	}
+	return onlineUsers
 }
-
 
 func RecentChatsController(w http.ResponseWriter, r *http.Request) {
-    user, err := AuthUser(r)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusUnauthorized)
-        return
-    }
+	user, err := AuthUser(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
 
-    recentChats, err := models.GetAllUsersOrderedByRecentChats(user.ID)
-    if err != nil {
-        fmt.Println(err)
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    onlineUsers := OnlineUsersController(recentChats)
-    fmt.Println(recentChats)
-    fmt.Println(onlineUsers)
-    //create json object with online Users and recent chats
-    listJSON := map[string]interface{}{
-        "onlineUsers": onlineUsers,
-        "recentChats": recentChats,
-    }
-    RespondWithJSON(w, http.StatusOK, listJSON)
+	recentChats, err := models.GetAllUsersOrderedByRecentChats(user.ID)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	onlineUsers := OnlineUsersController(recentChats)
+
+	// Get follow statuses for all users the current user has initiated follows with
+	followStatuses, err := models.GetFollowStatuses(user.ID)
+	if err != nil {
+		fmt.Printf("Error getting follow statuses: %v\n", err)
+		followStatuses = make(map[int]*models.FollowStatus)
+	}
+
+	// Create a map for the frontend with usernames as keys and follow info
+	type FollowInfo struct {
+		ID     int    `json:"id"`
+		Status string `json:"status"`
+	}
+	followStatusMap := make(map[string]*FollowInfo)
+	for _, chatUser := range recentChats {
+		if status, exists := followStatuses[chatUser.ID]; exists {
+			followStatusMap[chatUser.Username] = &FollowInfo{ID: status.ID, Status: status.Status}
+		} else {
+			followStatusMap[chatUser.Username] = &FollowInfo{ID: 0, Status: "none"}
+		}
+	}
+
+	listJSON := map[string]interface{}{
+		"onlineUsers":    onlineUsers,
+		"recentChats":    recentChats,
+		"followStatuses": followStatusMap,
+	}
+	RespondWithJSON(w, http.StatusOK, listJSON)
 }
 
-//make the handler for the post a private message
+// make the handler for the post a private message
 func PostPrivateMessageController(w http.ResponseWriter, r *http.Request) {
-    user, err := AuthUser(r)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusUnauthorized)
-        return
-    }
-    recipientID, err := strconv.Atoi(r.PathValue("id"))
-    if err != nil {
-        http.Error(w, "Invalid recipient ID", http.StatusBadRequest)
-        return
-    }
-    //get user with this id
-    recipient, err := models.GetUserByID(recipientID)
-    message := r.URL.Query().Get("messageInput")
-    fmt.Println("Saving message :::", message)
-    err = models.SavePrivateMessage(user.ID, recipientID, message)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    notification := &models.Notification{
+	user, err := AuthUser(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+	recipientID, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid recipient ID", http.StatusBadRequest)
+		return
+	}
+
+	message := r.URL.Query().Get("messageInput")
+	fmt.Println("Saving message :::", message)
+	err = models.SavePrivateMessage(user.ID, recipientID, message)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	notification := &models.Notification{
 		UserID:   recipientID,
 		Text:     fmt.Sprintf("%s sent you a message", user.Username),
 		SenderID: user.ID,
@@ -83,45 +95,45 @@ func PostPrivateMessageController(w http.ResponseWriter, r *http.Request) {
 		LinkID:   user.ID,
 		Date:     time.Now(),
 	}
-    
-hub.SendToUser(recipientID, map[string]interface{}{
-        "type": "notification",
-        "notification": notification,
-    })
+
+	hub.SendToUser(recipientID, map[string]interface{}{
+		"type":         "notification",
+		"notification": notification,
+	})
 
 	err = notification.Create()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-    //add a unique id for each message
-    messageJSON, _ := json.Marshal(map[string]interface{}{
-        "type": "message",
-        "message": message,
-        "recipient": recipient,
-        "sender": user,
-        "created_at": time.Now(),
-    })
-    hub.Broadcast <- messageJSON
-    RespondWithJSON(w, http.StatusOK, "Message sent")
+	//add a unique id for each message
+	hub.SendToUser(recipientID, map[string]interface{}{
+		"type": "message",
+		"message": map[string]interface{}{
+			"content":    message,
+			"sender":     user,
+			"created_at": time.Now(),
+		},
+	})
+	RespondWithJSON(w, http.StatusOK, "Message sent")
 }
 
 func GetPrivateMessagesController(w http.ResponseWriter, r *http.Request) {
-    user, err := AuthUser(r)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusUnauthorized)
-        return
-    }
-    recipientID, err := strconv.Atoi(r.PathValue("id"))
-    if err != nil {
-        http.Error(w, "Invalid recipient ID", http.StatusBadRequest)
-        return
-    }
-    page, err := strconv.Atoi(r.URL.Query().Get("page"))
-    messages, err := models.GetChatHistory(user.ID, recipientID, 10, page*10  )
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    RespondWithJSON(w, http.StatusOK, messages)
+	user, err := AuthUser(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+	recipientID, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid recipient ID", http.StatusBadRequest)
+		return
+	}
+	page, err := strconv.Atoi(r.URL.Query().Get("page"))
+	messages, err := models.GetChatHistory(user.ID, recipientID, 10, page*10)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	RespondWithJSON(w, http.StatusOK, messages)
 }
