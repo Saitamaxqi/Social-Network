@@ -29,3 +29,31 @@ export async function PUT(
     );
   }
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const authCookie = req.cookies.get('session')?.value || req.cookies.get('session_token')?.value;
+    const response = await fetch(`${BASE_URL}/notifications/${params.id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: {
+        'Cookie': `session=${authCookie}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete notification');
+    }
+
+    return NextResponse.json({ message: 'Notification deleted' });
+  } catch (error) {
+    console.error('Error deleting notification:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete notification' },
+      { status: 500 }
+    );
+  }
+}

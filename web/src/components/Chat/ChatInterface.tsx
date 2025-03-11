@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import ChatHeader from './ChatHeader';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
@@ -62,6 +63,7 @@ interface User {
 const ChatInterface: React.FC = () => {
   const searchParams = useSearchParams();
   const userIdParam = searchParams.get('userId');
+  const { socket } = useWebSocket();
   // State for storing the currently selected user
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   // State for tracking which users are online
@@ -135,7 +137,7 @@ const ChatInterface: React.FC = () => {
         // Filter out any duplicate messages that might already exist in the current messages array
         setMessages(prev => {
           const existingMessageIds = new Set(prev.map(msg => msg.id));
-          const newMessages = data.filter(msg => !existingMessageIds.has(msg.id));
+          const newMessages = data.filter((msg : Message) => !existingMessageIds.has(msg.id));
           return [...newMessages, ...prev];
         });
         setLoadingMessages(false);
@@ -177,6 +179,45 @@ const ChatInterface: React.FC = () => {
     // Reset the loading older messages flag after messages are updated
     setLoadingOlderMessages(false);
   }, [messages, loadingOlderMessages]);
+
+  // Handle incoming websocket messages
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      const data = JSON.parse(event.data);
+      
+      // Handle chat messages
+      if (data.type === 'message' && data.message && currentUser) {
+        const newMessage: Message = {
+          id: Date.now(), // Temporary ID for new messages
+          content: data.message.content,
+          sender_id: data.message.sender.id,
+          recipient_id: currentUser.id,
+          created_at: data.message.created_at,
+          sender: {
+            id: data.message.sender.id,
+            username: data.message.sender.username
+          },
+          recipient: {
+            id: currentUser.id,
+            username: currentUser.username
+          }
+        };
+
+        // Only add message if it's from the currently selected user
+        if (selectedUser && (newMessage.sender_id === selectedUser.id)) {
+          setMessages(prev => [...prev, newMessage]);
+        }
+      }
+    };
+
+    socket.addEventListener('message', handleMessage);
+
+    return () => {
+      socket.removeEventListener('message', handleMessage);
+    };
+  }, [socket, selectedUser, currentUser]);
 
   /**
    * Fetch user details when userId changes in URL

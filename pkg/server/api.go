@@ -50,6 +50,7 @@ func RegisterAPIs() {
 	GET("/notifications", controllers.NotificationController, requests.DefaultRequest, middlewares.AuthMiddleware)      // Index
 	PUT("/notifications/{id}", controllers.NotificationController, requests.DefaultRequest, middlewares.AuthMiddleware) // Update
 	PUT("/notifications", controllers.NotificationController, requests.DefaultRequest, middlewares.AuthMiddleware)      // Update all
+	DELETE("/notifications/{id}", controllers.NotificationController, requests.DefaultRequest, middlewares.AuthMiddleware)   // Delete
 	// Auth routes (Done)
 	POST("/login", controllers.AuthController, requests.LoginRequest, middlewares.DefaultAPIMiddleware)       // Login
 	GET("/login-session", controllers.AuthController, requests.DefaultRequest, middlewares.AuthMiddleware)    // Login session
