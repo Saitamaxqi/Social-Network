@@ -9,11 +9,11 @@
 /* Main container that holds the entire chat interface */
 .chat-container {
   display: flex; /* Use flexbox for layout */
-  flex-direction: column; /* Stack children vertically */
-  height: 100%; /* Take full height of parent */
+  height: calc(100vh - 4rem); /* Take full viewport height minus header */
   width: 100%; /* Take full width */
   border-radius: 0.5rem; /* Rounded corners */
   overflow: hidden; /* Hide content that exceeds the container */
+  margin-top: 1rem; /* Add some space from the top */
 }
 
 /* Sidebar showing list of recent chat conversations */
@@ -47,6 +47,8 @@
   flex-direction: column; /* Stack children vertically */
   background-color: rgba(0, 0, 0, 0.3); /* Semi-transparent dark background */
   width: 100%; /* Take full width */
+  overflow: hidden; /* Prevent content overflow */
+  position: relative; /* For absolute positioning of children if needed */
 }
 
 /* Header area showing current chat recipient */
@@ -96,6 +98,8 @@
   display: flex; /* Use flexbox for layout */
   flex-direction: column; /* Normal column direction */
   justify-content: flex-start; /* Align messages from the top */
+  height: calc(100vh - 12rem); /* Viewport height minus header, chat header, and input */
+  min-height: 0; /* Allow container to shrink */
 }
 
 /* Base style for all message bubbles */
