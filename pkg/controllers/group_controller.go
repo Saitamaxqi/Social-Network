@@ -75,6 +75,93 @@ func GetGroups(w http.ResponseWriter, r *http.Request) {
 	RespondWithJSON(w, http.StatusOK, groups)
 }
 
+// GetGroup returns a specific group by ID
+func GetGroup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get the authenticated user
+	user := r.Context().Value("user").(*models.User)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Extract the group ID from the URL
+	groupIDStr := r.PathValue("id")
+	if groupIDStr == "" {
+		http.Error(w, "Group ID is required", http.StatusBadRequest)
+		return
+	}
+
+	groupID, err := strconv.Atoi(groupIDStr)
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
+
+	// Fetch the group from the database
+	var group models.Group
+	err = models.DB.QueryRow("SELECT id, title, description, creator_id, created_at, updated_at FROM groups WHERE id = ?", groupID).
+		Scan(&group.ID, &group.Title, &group.Description, &group.CreatorID, &group.CreatedAt, &group.UpdatedAt)
+	if err != nil {
+		http.Error(w, "Group not found", http.StatusNotFound)
+		return
+	}
+
+	// Fetch the group creator
+	var creator models.User
+	err = models.DB.QueryRow("SELECT id, username, email FROM users WHERE id = ?", group.CreatorID).
+		Scan(&creator.ID, &creator.Username, &creator.Email)
+	if err != nil {
+		http.Error(w, "Error fetching group creator", http.StatusInternalServerError)
+		return
+	}
+	group.Creator = &creator
+
+	// Fetch group members
+	rows, err := models.DB.Query(`
+		SELECT gm.user_id, gm.status, u.username, u.email 
+		FROM group_members gm 
+		JOIN users u ON gm.user_id = u.id 
+		WHERE gm.group_id = ?`, groupID)
+	if err != nil {
+		http.Error(w, "Error fetching group members", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var members []*models.GroupMember
+	for rows.Next() {
+		member := &models.GroupMember{}
+		user := &models.User{}
+		err = rows.Scan(&user.ID, &member.Status, &user.Username, &user.Email)
+		if err != nil {
+			http.Error(w, "Error scanning group members", http.StatusInternalServerError)
+			return
+		}
+		member.User = user
+		member.UserID = user.ID
+		member.GroupID = groupID
+		members = append(members, member)
+	}
+	group.Members = members
+
+	// Check if the current user is a member of this group
+	var isMember bool
+	err = models.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM group_members WHERE group_id = ? AND user_id = ? AND status = 'member')",
+		groupID, user.ID).Scan(&isMember)
+	if err != nil {
+		http.Error(w, "Error checking membership", http.StatusInternalServerError)
+		return
+	}
+	group.IsMember = isMember
+
+	RespondWithJSON(w, http.StatusOK, group)
+}
+
 // InviteToGroup handles group invitations
 func InviteToGroup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

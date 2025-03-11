@@ -59,6 +59,7 @@ func RegisterAPIs() {
 
 	// Group routes
 	GET("/groups", controllers.GetGroups, requests.DefaultRequest, middlewares.AuthMiddleware)                           // Get all groups
+	GET("/groups/{id}", controllers.GetGroup, requests.DefaultRequest, middlewares.AuthMiddleware)                      // Get specific group by ID
 	POST("/groups", controllers.CreateGroup, requests.GroupRequest, middlewares.AuthMiddleware)                          // Create new group
 
 	// Group membership routes
