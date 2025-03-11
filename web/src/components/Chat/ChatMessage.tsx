@@ -63,10 +63,10 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
 
   return (
     // Apply different styling based on whether message was sent by current user
-    <div className={`message ${sentByMe ? 'message-sent' : 'message-received'}`}>
+    <div className={`message ${sentByMe ? 'message-from-me' : 'message-from-other'}`}>
       {/* Only show sender name for received messages when available */}
       {!sentByMe && senderName && (
-        <div className="text-xs font-medium opacity-80 mb-1">{senderName}</div>
+        <div className="message-sender">{senderName}</div>
       )}
       
       {/* Message content */}
@@ -75,7 +75,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
       </div>
       
       {/* Formatted timestamp */}
-      <div className="message-time">{formatTime(timestamp)}</div>
+      <div className="message-timestamp">{formatTime(timestamp)}</div>
     </div>
   );
 };
