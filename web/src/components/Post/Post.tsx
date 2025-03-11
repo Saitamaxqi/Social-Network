@@ -23,6 +23,7 @@ interface Post {
   categories?: Category[];
   likes?: number;
   dislikes?: number;
+  interaction?: number;
 }
 
 interface PostProps {
@@ -64,10 +65,33 @@ export default function Post({ categoryId }: PostProps) {
       }
       
       const data = await response.json();
-      console.log('Fetched posts:', data); // Debug log
-      setPosts(data);
+      
+      // Apply saved interactions from localStorage
+      try {
+        const savedInteractions = JSON.parse(localStorage.getItem('postInteractions') || '{}');
+        
+        if (Object.keys(savedInteractions).length > 0) {
+          // Create a new array instead of modifying the original to avoid React key issues
+          const postsWithInteractions = data.map((post: Post) => {
+            if (savedInteractions[post.id] !== undefined) {
+              return {
+                ...post,
+                interaction: savedInteractions[post.id]
+              };
+            }
+            return post;
+          });
+          setPosts(postsWithInteractions);
+        } else {
+          setPosts(data);
+        }
+      } catch (error) {
+        console.error('Error loading saved interactions:', error);
+        setPosts(data);
+      }
     } catch (error) {
       console.error('Error fetching posts:', error);
+      setPosts([]);
     } finally {
       setLoading(false);
     }
@@ -84,11 +108,65 @@ export default function Post({ categoryId }: PostProps) {
     }
   };
 
-  // Fetch data on component mount and when categoryId changes
+  // Handle post interaction (like/dislike)
+  const handleInteraction = async (postId: string, type: 'like' | 'dislike') => {
+    if (!user) {
+      // Redirect to login if user is not authenticated
+      router.push('/auth/login');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/posts/${postId}/interact`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ type }),
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to interact with post');
+      }
+
+      const data = await response.json();
+      
+      // Update the posts state with the new interaction data
+      setPosts(prevPosts => 
+        prevPosts.map(post => {
+          if (post.id === postId) {
+            // Store interaction in localStorage for persistence
+            try {
+              const userInteractions = JSON.parse(localStorage.getItem('postInteractions') || '{}');
+              userInteractions[postId] = data.interaction;
+              localStorage.setItem('postInteractions', JSON.stringify(userInteractions));
+            } catch (error) {
+              console.error('Error storing interaction in localStorage:', error);
+            }
+            
+            return {
+              ...post,
+              likes: data.likes || post.likes,
+              dislikes: data.dislikes || post.dislikes,
+              interaction: data.interaction
+            };
+          }
+          return post;
+        })
+      );
+    } catch (error) {
+      console.error('Error interacting with post:', error);
+    }
+  };
+
   useEffect(() => {
     fetchCategories();
+  }, [fetchCategories]);
+
+  useEffect(() => {
     fetchPosts();
-  }, [fetchCategories, fetchPosts, categoryId]);
+  }, [fetchPosts]);
 
   // Format time since post creation
   const timeSince = (dateString: string) => {
@@ -305,10 +383,10 @@ export default function Post({ categoryId }: PostProps) {
 
         {/* Posts list */}
         <div className="flex flex-col gap-4 sm:gap-6 pb-8">
-          {posts.map((post) => (
+          {posts.map((post, index) => (
             <div
               key={post.id}
-              className="border rounded-lg p-4 sm:p-6 hover:shadow-lg transition-shadow bg-white/5 backdrop-blur-sm w-full"
+              className="border border-gray-700 rounded-lg p-4 sm:p-6 hover:shadow-lg transition-shadow bg-white/5 backdrop-blur-sm w-full"
             >
               <div className="flex justify-between items-start mb-3 sm:mb-4">
                 <h3 className="font-semibold text-base sm:text-xl text-white">{post.author?.username || 'Unknown User'}</h3>
@@ -376,14 +454,28 @@ export default function Post({ categoryId }: PostProps) {
               </div>
               
               <div className="flex items-center gap-4">
-                <button className="flex items-center gap-1.5 text-gray-300 hover:text-blue-400 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button 
+                  onClick={() => handleInteraction(post.id, 'like')}
+                  className={`flex items-center gap-1.5 transition-colors ${
+                    post.interaction === 1 
+                      ? 'text-blue-500' 
+                      : 'text-gray-300 hover:text-blue-400'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={post.interaction === 1 ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905a3.61 3.61 0 01-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
                   </svg>
                   <span>{post.likes || 0}</span>
                 </button>
-                <button className="flex items-center gap-1.5 text-gray-300 hover:text-red-400 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button 
+                  onClick={() => handleInteraction(post.id, 'dislike')}
+                  className={`flex items-center gap-1.5 transition-colors ${
+                    post.interaction === -1 
+                      ? 'text-red-500' 
+                      : 'text-gray-300 hover:text-red-400'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={post.interaction === -1 ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2" />
                   </svg>
                   <span>{post.dislikes || 0}</span>
