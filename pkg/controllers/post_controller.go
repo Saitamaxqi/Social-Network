@@ -347,6 +347,13 @@ func CommentPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse multipart form to handle file uploads
+	err = r.ParseMultipartForm(10 << 20) // 10 MB max memory
+	if err != nil && err != http.ErrNotMultipart {
+		http.Error(w, "Error parsing form data", http.StatusBadRequest)
+		return
+	}
+
 	comment := &models.Post{
 		UserID: user.ID,
 		PostID: sql.NullInt64{Int64: int64(postID), Valid: true},
@@ -358,6 +365,19 @@ func CommentPost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// Handle media file upload if present
+	mediaFile, mediaHeader, err := r.FormFile("media")
+	if err == nil && mediaFile != nil {
+		defer mediaFile.Close()
+		
+		// Store the media file
+		err = comment.StoreMediaFile(mediaFile, mediaHeader)
+		if err != nil {
+			// Log the error but continue, as the comment is already created
+			fmt.Printf("Error storing media file: %v\n", err)
+		}
 	}
 
 	err = comment.GetRelations()
