@@ -21,22 +21,72 @@ func Init() {
 	if err != nil {
 		log.Fatal(err)
 	}
-// fix this to match the new database
-admin := &models.User{
-    Username:    "admin",
-    Age:        30,
-    Gender:     "male",
-    FirstName:  "Admin",
-    LastName:   "User",
-    Email:      "admin@social.com",
-    Password:   "admin",
-    Type:       "admin",
-    Avatar:     sql.NullString{String: "", Valid: false},
-    ProfileType: "private",
-    AboutMe:    "System Administrator",
+	
+	// Create default admin user
+	admin := &models.User{
+		Username:    "admin",
+		Age:        30,
+		Gender:     "male",
+		FirstName:  "Admin",
+		LastName:   "User",
+		Email:      "admin@social.com",
+		Password:   "admin",
+		Type:       "admin",
+		Avatar:     sql.NullString{String: "", Valid: false},
+		ProfileType: "private",
+		AboutMe:    "System Administrator",
+	}
+	admin.Create()
+	
+	// Create default categories
+	createDefaultCategories()
 }
 
+// createDefaultCategories creates the default categories if they don't exist
+func createDefaultCategories() {
+	// Default categories
+	defaultCategories := []string{
+		"Tech",
+		"Lifestyle",
+		"Food",
+		"Anime",
+		"Video Games",
+		"Beauty",
+	}
+	
+	// Create each category if it doesn't exist
+	for _, categoryName := range defaultCategories {
+		category := &models.Category{
+			Name: categoryName,
+		}
+		
+		// Check if category already exists
+		exists, err := categoryExists(categoryName)
+		if err != nil {
+			continue
+		}
+		
+		if !exists {
+			category.Create()
+		}
+	}
+}
 
-
-	admin.Create()
+// categoryExists checks if a category with the given name already exists
+func categoryExists(name string) (bool, error) {
+	rows, err := models.DB.Query("SELECT COUNT(*) FROM categories WHERE name = ?", name)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	
+	var count int
+	if rows.Next() {
+		err = rows.Scan(&count)
+		if err != nil {
+			return false, err
+		}
+	}
+	
+	return count > 0, nil
 }

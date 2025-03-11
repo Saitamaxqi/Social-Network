@@ -329,19 +329,21 @@ const ChatInterface: React.FC = () => {
   }, [currentUser]);
 
   return (
-    <div className="chat-container flex h-full">
-      {/* Main chat area */}
-      <div className="chat-content flex-1">
-        {/* Show chat header with recipient info if a user is selected */}
-        <ChatHeader 
-          recipient={selectedUser} 
-          isOnline={selectedUser ? onlineUsers[selectedUser.username] || false : false} 
-        />
+    <div className="chat-container" style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Chat header */}
+      {selectedUser && (
+        <div className="chat-header-container">
+          <ChatHeader 
+            recipient={selectedUser} 
+            isOnline={onlineUsers[selectedUser.username] || false} 
+          />
+        </div>
+      )}
 
-        {/* Display chat messages or empty state */}
+      {/* Chat messages area */}
+      <div className="chat-messages-area" style={{ flex: 1, overflowY: 'auto', paddingBottom: '70px' }}>
         {selectedUser ? (
           <div className="chat-messages" ref={messagesContainerRef}>
-            {/* Load more messages button */}
             {hasMoreMessages && (
               <button 
                 onClick={loadMoreMessages}
@@ -352,10 +354,8 @@ const ChatInterface: React.FC = () => {
               </button>
             )}
             
-            {/* Display messages */}
             {messages.length > 0 ? (
-              // Sort messages by timestamp to ensure chronological order
-              [...messages]
+              messages
                 .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
                 .map((message, index) => (
                   <ChatMessage
@@ -385,15 +385,26 @@ const ChatInterface: React.FC = () => {
             <div className="text-sm">Click on a chat icon next to a user in the right sidebar to start chatting</div>
           </div>
         )}
+      </div>
 
-        {/* Chat input field - only shown when a user is selected */}
-        {selectedUser && (
+      {/* Chat input field */}
+      {selectedUser && (
+        <div style={{ 
+          position: 'absolute', 
+          bottom: 0, 
+          left: 0, 
+          right: 0, 
+          width: '100%', 
+          backgroundColor: '#1a1a1a',
+          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          padding: '10px'
+        }}>
           <ChatInput 
             onSendMessage={sendMessage} 
             disabled={loadingMessages} 
           />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

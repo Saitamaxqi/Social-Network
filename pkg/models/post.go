@@ -49,7 +49,7 @@ func (p *Post) CreateTable() error {
 }
 
 func (p *Post) Index() ([]Model, error) {
-	rows, err := DB.Query(`SELECT * FROM posts WHERE post_id IS NULL`)
+	rows, err := DB.Query(`SELECT * FROM posts WHERE post_id IS NULL ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, err
 	}
