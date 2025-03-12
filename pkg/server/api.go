@@ -95,4 +95,9 @@ func RegisterAPIs() {
 	POST("/follow", controllers.FollowController, requests.DefaultRequest, middlewares.AuthMiddleware)
 	DELETE("/follow/{id}", controllers.FollowController, requests.DefaultRequest, middlewares.AuthMiddleware)
 	PUT("/follow/{id}", controllers.FollowController, requests.DefaultRequest, middlewares.AuthMiddleware)
+	
+	//close friends routes
+	GET("/close-friends", controllers.CloseFriendController, requests.DefaultRequest, middlewares.AuthMiddleware)
+	POST("/close-friends", controllers.CloseFriendController, requests.DefaultRequest, middlewares.AuthMiddleware)
+	DELETE("/close-friends/{id}", controllers.CloseFriendController, requests.DefaultRequest, middlewares.AuthMiddleware)
 }

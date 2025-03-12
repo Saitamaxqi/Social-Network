@@ -1,10 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
 import { Switch } from '@headlessui/react';
 import Image from 'next/image';
+import { GlobeAltIcon, LockClosedIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 
 interface Category {
   id: number;
   name: string;
+}
+
+type VisibilityOption = 'public' | 'private' | 'close_friends';
+
+interface VisibilitySettings {
+  id: VisibilityOption;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
 }
 
 export default function CreatePost() {
@@ -15,6 +25,34 @@ export default function CreatePost() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [media, setMedia] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string>('');
+  const [visibility, setVisibility] = useState<VisibilityOption>('public');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const visibilityOptions: VisibilitySettings[] = [
+    {
+      id: 'public',
+      name: 'Public',
+      description: 'Anyone can see this post',
+      icon: <GlobeAltIcon className="h-5 w-5" />
+    },
+    {
+      id: 'private',
+      name: 'Private',
+      description: 'Only your followers can see this post',
+      icon: <LockClosedIcon className="h-5 w-5" />
+    },
+    {
+      id: 'close_friends',
+      name: 'Close Friends',
+      description: 'Only people you\'ve added to your close friends list can see this post',
+      icon: <UserGroupIcon className="h-5 w-5" />
+    }
+  ];
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -37,12 +75,6 @@ export default function CreatePost() {
 
     fetchCategories();
   }, []);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [media, setMedia] = useState<File | null>(null);
-  const [mediaPreview, setMediaPreview] = useState<string>('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleCategoryToggle = (categoryId: number) => {
     setSelectedCategoryIds(prev => 
@@ -60,31 +92,66 @@ export default function CreatePost() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isSubmitting) return;
+    
+    // Validate form
+    if (!content.trim()) {
+      setSubmitError('Please enter some content for your post');
+      return;
+    }
+    
+    if (selectedCategoryIds.length === 0) {
+      setSubmitError('Please select at least one category');
+      return;
+    }
+    
     setIsSubmitting(true);
     setSubmitError('');
-    setSubmitSuccess(false);
-
+    
     try {
       const formData = new FormData();
-      formData.append('title', title);
+      
+      // Add title if provided
+      if (title.trim()) {
+        formData.append('title', title);
+      }
+      
+      // Add content as body
       formData.append('body', content);
+      
       // Convert category IDs to comma-separated string
       if (selectedCategoryIds.length > 0) {
         formData.append('categories', selectedCategoryIds.join(','));
       }
+      
+      // Add media if provided
       if (media) {
         formData.append('media', media);
       }
+      
+      // Add visibility setting
+      formData.append('visibility', visibility);
 
-      const response = await fetch('/api/createpost', {
+      console.log('Submitting post with data:', {
+        title,
+        content,
+        categories: selectedCategoryIds.join(','),
+        visibility,
+        hasMedia: !!media
+      });
+
+      // Use the API route that forwards cookies to the backend
+      const response = await fetch('/api/auth/posts/create', {
         method: 'POST',
-        body: formData
+        body: formData,
+        credentials: 'include' // Include cookies in the request
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to create post');
+        throw new Error(data.error || data.message || 'Failed to create post');
       }
 
       // Reset form
@@ -182,6 +249,28 @@ export default function CreatePost() {
         </div>
 
         <div className="space-y-2 sm:space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-200 mb-2">Visibility</label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+              {visibilityOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setVisibility(option.id)}
+                  className={`w-full py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white ${
+                    visibility === option.id ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-700 hover:bg-gray-600'
+                  }`}
+                >
+                  <div className="flex items-center justify-center">
+                    {option.icon}
+                    <span className="ml-2">{option.name}</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">{option.description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-200 mb-2">Media (Optional)</label>
             <input

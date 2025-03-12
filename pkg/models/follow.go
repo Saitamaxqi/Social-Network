@@ -146,6 +146,40 @@ func (f *Follow) LoadRelations() error {
 	return nil
 }
 
+func (f *Follow) GetFollowers(userID int) ([]*User, error) {
+	query := `
+		SELECT u.id, u.username, u.age, u.gender, u.first_name, u.last_name, 
+		u.email, u.password, u.type, u.requested, u.avatar, u.profile_type, 
+		u.about_me, u.created_at, u.updated_at
+		FROM users u
+		JOIN follows f ON u.id = f.follower_id
+		WHERE f.following_id = ? AND f.status = 'accepted'
+	`
+	
+	rows, err := DB.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var followers []*User
+	for rows.Next() {
+		follower := &User{}
+		err = rows.Scan(
+			&follower.ID, &follower.Username, &follower.Age, &follower.Gender,
+			&follower.FirstName, &follower.LastName, &follower.Email, &follower.Password,
+			&follower.Type, &follower.Requested, &follower.Avatar, &follower.ProfileType,
+			&follower.AboutMe, &follower.CreatedAt, &follower.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		followers = append(followers, follower)
+	}
+
+	return followers, nil
+}
+
 // Add these methods to your existing User struct
 
 func (u *User) GetFollowers() ([]*User, error) {

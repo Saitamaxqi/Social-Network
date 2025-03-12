@@ -11,14 +11,15 @@ import (
 )
 
 type Post struct {
-	ID       int            `json:"id"`
-	Title    string         `json:"title"`
-	Body     string         `json:"body"`
-	Media    sql.NullString `json:"media"`
-	Likes    int            `json:"likes"`
-	Dislikes int            `json:"dislikes"`
-	PostID   sql.NullInt64  `json:"post_id"`
-	UserID   int            `json:"user_id"`
+	ID         int            `json:"id"`
+	Title      string         `json:"title"`
+	Body       string         `json:"body"`
+	Media      sql.NullString `json:"media"`
+	Likes      int            `json:"likes"`
+	Dislikes   int            `json:"dislikes"`
+	PostID     sql.NullInt64  `json:"post_id"`
+	UserID     int            `json:"user_id"`
+	Visibility string         `json:"visibility"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -40,6 +41,7 @@ func (p *Post) CreateTable() error {
     			dislikes           	INTEGER DEFAULT 0,
     			post_id           	INTEGER NULL,
     			user_id           	INTEGER NOT NULL,
+    			visibility       	VARCHAR NULL,
     			created_at           DATETIME DEFAULT CURRENT_TIMESTAMP,
     			updated_at           DATETIME DEFAULT CURRENT_TIMESTAMP,
     			FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
@@ -58,7 +60,7 @@ func (p *Post) Index() ([]Model, error) {
 
 	for rows.Next() {
 		post := &Post{}
-		err = rows.Scan(&post.ID, &post.Title, &post.Body, &post.Media, &post.Likes, &post.Dislikes, &post.PostID, &post.UserID, &post.CreatedAt, &post.UpdatedAt)
+		err = rows.Scan(&post.ID, &post.Title, &post.Body, &post.Media, &post.Likes, &post.Dislikes, &post.PostID, &post.UserID, &post.Visibility, &post.CreatedAt, &post.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -84,7 +86,7 @@ func (p *Post) Create() error {
 		return errors.New("post already exists")
 	}
 
-	result, err := DB.Exec(`INSERT INTO posts (title, body, media, post_id, user_id) VALUES (?, ?, ?, ?, ?)`, p.Title, p.Body, p.Media, p.PostID, p.UserID)
+	result, err := DB.Exec(`INSERT INTO posts (title, body, media, post_id, user_id, visibility) VALUES (?, ?, ?, ?, ?, ?)`, p.Title, p.Body, p.Media, p.PostID, p.UserID, p.Visibility)
 	if err != nil {
 		return err
 	}
@@ -103,7 +105,7 @@ func (p *Post) Update() error {
 		return errors.New("post does not exist")
 	}
 
-	_, err := DB.Exec(`UPDATE posts SET title = ?, body = ?, media = ?, likes = ?, dislikes = ?, post_id = ?, user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, p.Title, p.Body, p.Media, p.Likes, p.Dislikes, p.PostID, p.UserID, p.ID)
+	_, err := DB.Exec(`UPDATE posts SET title = ?, body = ?, media = ?, likes = ?, dislikes = ?, post_id = ?, user_id = ?, visibility = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, p.Title, p.Body, p.Media, p.Likes, p.Dislikes, p.PostID, p.UserID, p.Visibility, p.ID)
 	return err
 }
 
@@ -126,7 +128,7 @@ func (p *Post) Refresh() error {
 		return errors.New("post does not exist")
 	}
 
-	err := DB.QueryRow(`SELECT * FROM posts WHERE id = ?`, p.ID).Scan(&p.ID, &p.Title, &p.Body, &p.Media, &p.Likes, &p.Dislikes, &p.PostID, &p.UserID, &p.CreatedAt, &p.UpdatedAt)
+	err := DB.QueryRow(`SELECT * FROM posts WHERE id = ?`, p.ID).Scan(&p.ID, &p.Title, &p.Body, &p.Media, &p.Likes, &p.Dislikes, &p.PostID, &p.UserID, &p.Visibility, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return errors.New("post does not exist")
 	}
@@ -181,7 +183,7 @@ func (p *Post) GetComments() error {
 
 	for rows.Next() {
 		comment := &Post{}
-		err = rows.Scan(&comment.ID, &comment.Title, &comment.Body, &comment.Media, &comment.Likes, &comment.Dislikes, &comment.PostID, &comment.UserID, &comment.CreatedAt, &comment.UpdatedAt)
+		err = rows.Scan(&comment.ID, &comment.Title, &comment.Body, &comment.Media, &comment.Likes, &comment.Dislikes, &comment.PostID, &comment.UserID, &comment.Visibility, &comment.CreatedAt, &comment.UpdatedAt)
 		if err != nil {
 			return err
 		}

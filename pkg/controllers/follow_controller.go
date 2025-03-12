@@ -16,6 +16,12 @@ func FollowController(w http.ResponseWriter, r *http.Request) {
         UpdateFollow(w, r)
     case "DELETE":
         DeleteFollow(w, r)
+    case "GET":
+        if r.URL.Path == "/follow/followers" {
+            GetFollowers(w, r)
+        } else {
+            http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        }
     default:
         http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
     }
@@ -222,4 +228,21 @@ func DeleteFollow(w http.ResponseWriter, r *http.Request) {
     }
 
     RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Unfollowed successfully"})
+}
+
+func GetFollowers(w http.ResponseWriter, r *http.Request) {
+    user, err := AuthUser(r)
+    if err != nil {
+        http.Error(w, "Unauthorized", http.StatusUnauthorized)
+        return
+    }
+
+    follow := &models.Follow{}
+    followers, err := follow.GetFollowers(user.ID)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    RespondWithJSON(w, http.StatusOK, followers)
 }

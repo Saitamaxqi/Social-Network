@@ -29,6 +29,8 @@ func PostController(w http.ResponseWriter, r *http.Request) {
 }
 
 func IndexPosts(w http.ResponseWriter, r *http.Request) {
+	user, _ := AuthUser(r) // Get current user, might be nil for unauthenticated users
+	
 	post := &models.Post{}
 	posts, err := post.Index()
 	if err != nil {
@@ -36,7 +38,62 @@ func IndexPosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	RespondWithJSON(w, http.StatusOK, posts)
+	// Filter posts based on visibility settings
+	var filteredPosts []models.Model
+	for _, p := range posts {
+		postObj := p.(*models.Post)
+		
+		// Public posts are visible to everyone
+		if postObj.Visibility == "public" {
+			filteredPosts = append(filteredPosts, p)
+			continue
+		}
+		
+		// If user is not authenticated, they can only see public posts
+		if user == nil {
+			continue
+		}
+		
+		// User can always see their own posts
+		if postObj.UserID == user.ID {
+			filteredPosts = append(filteredPosts, p)
+			continue
+		}
+		
+		// Private posts are visible to followers
+		if postObj.Visibility == "private" {
+			// Check if the user follows the post author
+			var exists bool
+			rows, err := models.DB.Query("SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ? LIMIT 1", 
+				user.ID, postObj.UserID)
+			if err != nil {
+				continue // Skip on error
+			}
+			defer rows.Close()
+			exists = rows.Next()
+			
+			if exists {
+				filteredPosts = append(filteredPosts, p)
+			}
+			continue
+		}
+		
+		// Close friends posts are only visible to selected users
+		if postObj.Visibility == "close_friends" {
+			// Check if user is in the author's close friends list
+			closeFriend := &models.CloseFriend{}
+			isCloseFriend, err := closeFriend.IsCloseFriend(postObj.UserID, user.ID)
+			if err != nil {
+				continue // Skip on error
+			}
+			
+			if isCloseFriend {
+				filteredPosts = append(filteredPosts, p)
+			}
+		}
+	}
+
+	RespondWithJSON(w, http.StatusOK, filteredPosts)
 }
 
 func CreatePost(w http.ResponseWriter, r *http.Request) {
@@ -46,10 +103,23 @@ func CreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get visibility setting with default to "public"
+	visibility := r.FormValue("visibility")
+	if visibility == "" {
+		visibility = "public"
+	}
+	
+	// Validate visibility value
+	if visibility != "public" && visibility != "private" && visibility != "close_friends" {
+		http.Error(w, "Invalid visibility setting. Must be 'public', 'private', or 'close_friends'", http.StatusBadRequest)
+		return
+	}
+
 	post := &models.Post{
-		UserID: user.ID,
-		Title:  r.FormValue("title"),
-		Body:   r.FormValue("body"),
+		UserID:     user.ID,
+		Title:      r.FormValue("title"),
+		Body:       r.FormValue("body"),
+		Visibility: visibility,
 	}
 	err = post.Create()
 	if err != nil {
@@ -219,6 +289,55 @@ func ShowPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := AuthUser(r)
+	
+	// Check visibility permissions
+	if post.Visibility != "public" {
+		if err != nil {
+			// User is not authenticated and post is not public
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		
+		// User can always see their own posts
+		if post.UserID != user.ID {
+			// For private posts, check if user follows the post author
+			if post.Visibility == "private" {
+				var isFollowing bool
+				rows, err := models.DB.Query("SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ? LIMIT 1", 
+					user.ID, post.UserID)
+				if err != nil {
+					http.Error(w, "Error checking follow status", http.StatusInternalServerError)
+					return
+				}
+				defer rows.Close()
+				isFollowing = rows.Next()
+				
+				if !isFollowing {
+					http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					return
+				}
+			}
+			
+			// For close friends posts, check if user is in the author's close friends list
+			if post.Visibility == "close_friends" {
+				var isCloseFriend bool
+				rows, err := models.DB.Query("SELECT 1 FROM close_friends WHERE user_id = ? AND friend_id = ? LIMIT 1", 
+					post.UserID, user.ID)
+				if err != nil {
+					http.Error(w, "Error checking close friend status", http.StatusInternalServerError)
+					return
+				}
+				defer rows.Close()
+				isCloseFriend = rows.Next()
+				
+				if !isCloseFriend {
+					http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					return
+				}
+			}
+		}
+	}
+	
 	if err == nil {
 		post.GetInteraction(user.ID)
 	}
