@@ -15,6 +15,7 @@ type Group struct {
 
 	Creator *User `json:"creator,omitempty"`
 	Members []*GroupMember `json:"members,omitempty"`
+	IsMember bool `json:"is_member,omitempty"`
 }
 
 type GroupMember struct {
