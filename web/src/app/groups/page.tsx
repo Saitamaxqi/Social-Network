@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import MainLayout from '@/components/Layout/MainLayout';
 
 interface Group {
   id: number;
@@ -46,13 +47,14 @@ export default function GroupsPage() {
   }, []);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-white">Groups</h1>
-        {user && (
-          <Link 
-            href="/groups/create" 
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+      <MainLayout>
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-white">Groups</h1>
+          {user && (
+            <Link 
+              href="/groups/create" 
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
           >
             Create Group
           </Link>
@@ -92,6 +94,7 @@ export default function GroupsPage() {
           )}
         </div>
       )}
-    </div>
+     </div>
+     </MainLayout>
   );
 }

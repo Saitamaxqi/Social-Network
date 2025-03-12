@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import MainLayout from '@/components/Layout/MainLayout';
 
 interface Group {
   id: number;
@@ -159,7 +160,8 @@ export default function GroupDetailPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <MainLayout>
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
       {/* Group Header */}
       <div className="bg-gray-800 rounded-lg p-6 mb-6 shadow-lg">
         <div className="flex justify-between items-start">
@@ -372,5 +374,6 @@ export default function GroupDetailPage() {
         )}
       </div>
     </div>
+    </MainLayout>
   );
 }
