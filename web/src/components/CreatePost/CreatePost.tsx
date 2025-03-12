@@ -106,28 +106,28 @@ export default function CreatePost() {
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-white">
+    <div className="w-full max-w-2xl mx-auto px-2 sm:px-0">
+      <div className="text-center mb-4 sm:mb-8">
+        <h2 className="text-2xl sm:text-3xl font-bold text-white">
           Create New Post
         </h2>
         {error && (
-          <div className="mt-4 rounded-md bg-red-500/20 backdrop-blur-sm p-4">
+          <div className="mt-4 rounded-md bg-red-500/20 backdrop-blur-sm p-3 sm:p-4">
             <div className="text-sm text-red-200">{error}</div>
           </div>
         )}
         {submitError && (
-          <div className="mt-4 rounded-md bg-red-500/20 backdrop-blur-sm p-4">
+          <div className="mt-4 rounded-md bg-red-500/20 backdrop-blur-sm p-3 sm:p-4">
             <div className="text-sm text-red-200">{submitError}</div>
           </div>
         )}
         {submitSuccess && (
-          <div className="mt-4 rounded-md bg-green-500/20 backdrop-blur-sm p-4">
+          <div className="mt-4 rounded-md bg-green-500/20 backdrop-blur-sm p-3 sm:p-4">
             <div className="text-sm text-green-200">Post created successfully!</div>
           </div>
         )}
       </div>
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         <div>
           <label className="block text-sm font-medium text-gray-200 mb-2">Title</label>
           <input
@@ -142,9 +142,9 @@ export default function CreatePost() {
 
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-200 mb-2">Categories</label>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
             {isLoading ? (
-              <div className="col-span-2 flex justify-center">
+              <div className="col-span-1 sm:col-span-2 flex justify-center">
                 <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
               </div>
             ) : categories.map((category) => (
@@ -176,12 +176,12 @@ export default function CreatePost() {
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Write your post content..."
-            className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-600 bg-black/30 backdrop-blur-sm text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent h-32"
+            className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-600 bg-black/30 backdrop-blur-sm text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent h-24 sm:h-32"
             required
           />
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-2 sm:space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-200 mb-2">Media (Optional)</label>
             <input
@@ -201,56 +201,70 @@ export default function CreatePost() {
                 }
               }}
             />
-            <div className="mt-1 flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 text-sm font-medium text-gray-200 border border-gray-600 bg-black/30 backdrop-blur-sm rounded-md hover:bg-black/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full sm:w-auto px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
               >
-                Upload Media
+                Select Media
               </button>
               {media && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMedia(null);
-                    setMediaPreview('');
-                  }}
-                  className="text-sm text-red-600 hover:text-red-800"
-                >
-                  Remove
-                </button>
+                <span className="text-sm text-gray-300 truncate max-w-full">
+                  {media.name} ({(media.size / 1024).toFixed(2)} KB)
+                </span>
               )}
             </div>
-            {mediaPreview && (
-              <div className="mt-2 relative w-full h-48">
-                {media?.type.startsWith('image/') ? (
+          </div>
+
+          {mediaPreview && (
+            <div className="mt-2 relative rounded-lg overflow-hidden">
+              {media?.type.startsWith('image/') ? (
+                <div className="relative w-full h-48 sm:h-64">
                   <Image
                     src={mediaPreview}
                     alt="Preview"
                     fill
-                    className="object-contain rounded-lg"
+                    className="object-contain"
                   />
-                ) : (
-                  <video
-                    src={mediaPreview}
-                    controls
-                    className="w-full h-full rounded-lg"
-                  />
-                )}
-              </div>
-            )}
-          </div>
+                </div>
+              ) : media?.type.startsWith('video/') ? (
+                <video
+                  src={mediaPreview}
+                  controls
+                  className="w-full max-h-48 sm:max-h-64 rounded-lg"
+                />
+              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setMedia(null);
+                  setMediaPreview('');
+                }}
+                className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                aria-label="Remove media"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="pt-2 sm:pt-4">
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${isSubmitting ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+            className={`w-full py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+              isSubmitting ? 'opacity-75 cursor-not-allowed' : ''
+            }`}
           >
             {isSubmitting ? (
-              <>
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                Creating Post...
-              </>
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                <span>Creating Post...</span>
+              </div>
             ) : (
               'Create Post'
             )}
