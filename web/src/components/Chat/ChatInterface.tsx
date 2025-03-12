@@ -90,7 +90,7 @@ const ChatInterface: React.FC = () => {
     const fetchCurrentUser = async () => {
       try {
         // Use the correct endpoint as defined in the backend
-        const response = await fetch('/api/login-session', {
+        const response = await fetch('/api/auth/session', {
           credentials: 'include' // Include cookies in the request
         });
         if (response.ok) {
