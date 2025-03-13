@@ -71,7 +71,7 @@ export default function UsersSidebar() {
   const { currentGroupId, showGroupMembersOnly, setShowGroupMembersOnly, groupMembers } = useGroup();
   
   // Check if we're on a group page
-  const isGroupPage = pathname?.startsWith('/groups/') || false;
+  const isGroupPage = pathname?.startsWith(`/groups/${currentGroupId}`) || false;
 
   useEffect(() => {
     if (!user) return;

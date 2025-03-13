@@ -46,8 +46,8 @@ type TabType = 'chat' | 'posts' | 'events';
 export default function GroupDetailPage() {
   const { groupId } = useParams();
   const [group, setGroup] = useState<Group | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [posts, setPosts] = useState<Post[] | null>(null);
+  const [events, setEvents] = useState<Event[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('chat');
   const [isMember, setIsMember] = useState(false);
@@ -112,7 +112,7 @@ export default function GroupDetailPage() {
             const postsData = await postsResponse.json();
             setPosts(postsData);
           } else {
-            setPosts([]);
+            setPosts(null);
           }
           
           // Fetch events if user is a member
@@ -122,7 +122,7 @@ export default function GroupDetailPage() {
             const eventsData = await eventsResponse.json();
             setEvents(eventsData);
           } else {
-            setEvents([]);
+            setEvents(null);
           }
         }
         
@@ -299,7 +299,7 @@ export default function GroupDetailPage() {
                   </Link>
                 </div>
                 
-                {posts.length > 0 ? (
+                {posts && posts.length > 0 ? (
                   <div className="space-y-6">
                     {posts.map((post) => (
                       <div key={post.id} className="bg-gray-700 rounded-lg p-4 shadow">
@@ -348,7 +348,7 @@ export default function GroupDetailPage() {
                   </Link>
                 </div>
                 
-                {events.length > 0 ? (
+                {events && events.length > 0 ? (
                   <div className="space-y-6">
                     {events.map((event) => (
                       <div key={event.id} className="bg-gray-700 rounded-lg p-4 shadow">
