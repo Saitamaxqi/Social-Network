@@ -6,6 +6,7 @@ import (
     "forum/pkg/models"
     "net/http"
     "strconv"
+    "strings"
     "time"
 )
 
@@ -426,27 +427,103 @@ func CreateGroupPost(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    var post models.GroupPost
-    if err := json.NewDecoder(r.Body).Decode(&post); err != nil {
-        http.Error(w, err.Error(), http.StatusBadRequest)
+    // Get group ID from URL path
+    groupID, err := strconv.Atoi(r.PathValue("id"))
+    if err != nil {
+        http.Error(w, "Invalid group ID", http.StatusBadRequest)
         return
     }
 
-    // Verify user is a member of the group
-    var isMember bool
-    err := models.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM group_members WHERE group_id = ? AND user_id = ? AND status = 'member')",
-        post.GroupID, user.ID).Scan(&isMember)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
+    // Parse form data
+    if err := r.ParseMultipartForm(10 << 20); err != nil && err != http.ErrNotMultipart {
+        http.Error(w, err.Error(), http.StatusBadRequest)
         return
     }
-    if !isMember {
+    
+    title := r.FormValue("title")
+    body := r.FormValue("body")
+    
+    if body == "" {
+        http.Error(w, "Post body is required", http.StatusBadRequest)
+        return
+    }
+
+    // Check if the group exists
+    group := &models.Group{ID: groupID}
+    if !group.Exists() {
+        http.Error(w, "Group not found", http.StatusNotFound)
+        return
+    }
+
+    // Check if user is a member of the group
+    member := &models.GroupMember{GroupID: groupID, UserID: user.ID}
+    if err := member.Refresh(); err != nil || member.Status != "member" {
         http.Error(w, "Only group members can create posts", http.StatusForbidden)
         return
     }
 
-    post.UserID = user.ID
+    // Create a regular post with group_id
+    post := models.Post{
+        Title:      title,
+        Body:       body,
+        UserID:     user.ID,
+        Visibility: "group", // Set visibility to indicate it's a group post
+        GroupID:    sql.NullInt64{Int64: int64(groupID), Valid: true},
+    }
+
+    // Handle media file if provided
+    mediaFile, header, err := r.FormFile("media")
+    if err == nil && mediaFile != nil {
+        defer mediaFile.Close()
+        // Create the post first to get an ID
+        if err := post.Create(); err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+        
+        // Then store the media file
+        if err := post.StoreMediaFile(mediaFile, header); err != nil {
+            // If media storage fails, delete the post
+            post.Delete()
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+        
+        // Post is already created, skip the create step below
+        goto LoadRelations
+    }
+
     if err := post.Create(); err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+LoadRelations:
+    // Handle categories if provided
+    categoriesStr := r.FormValue("categories")
+    if categoriesStr != "" {
+        var categoryIDs []int
+        for _, categoryID := range strings.Split(categoriesStr, ",") {
+            id, err := strconv.Atoi(categoryID)
+            if err != nil && categoryID != "" {
+                http.Error(w, "Invalid category ID", http.StatusBadRequest)
+                return
+            }
+            if categoryID != "" {
+                categoryIDs = append(categoryIDs, id)
+            }
+        }
+        
+        if len(categoryIDs) > 0 {
+            if err := post.SyncCategories(categoryIDs); err != nil {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+                return
+            }
+        }
+    }
+    
+    // Load related data
+    if err := post.GetRelations(); err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
@@ -527,32 +604,11 @@ func GetGroupPosts(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // Get all posts for the group
-    var posts []models.GroupPost
-    rows, err := models.DB.Query(`
-        SELECT gp.id, gp.group_id, gp.user_id, gp.content, gp.created_at, gp.updated_at, u.username
-        FROM group_posts gp
-        JOIN users u ON gp.user_id = u.id
-        WHERE gp.group_id = ?
-        ORDER BY gp.created_at DESC
-    `, groupID)
+    // Get all posts for the group using the model method
+    posts, err := models.GetGroupPosts(groupID, user.ID)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
-    }
-    defer rows.Close()
-
-    for rows.Next() {
-        var post models.GroupPost
-        var username string
-        err = rows.Scan(&post.ID, &post.GroupID, &post.UserID, &post.Content,
-            &post.CreatedAt, &post.UpdatedAt, &username)
-        if err != nil {
-            http.Error(w, err.Error(), http.StatusInternalServerError)
-            return
-        }
-        post.User = &models.User{Username: username}
-        posts = append(posts, post)
     }
 
     RespondWithJSON(w, http.StatusOK, posts)

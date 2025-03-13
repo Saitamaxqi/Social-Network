@@ -20,6 +20,7 @@ type Post struct {
 	PostID     sql.NullInt64  `json:"post_id"`
 	UserID     int            `json:"user_id"`
 	Visibility string         `json:"visibility"`
+	GroupID    sql.NullInt64  `json:"group_id"` // ID of the group if this is a group post
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -29,6 +30,7 @@ type Post struct {
 	Categories   []*Category `json:"categories"`
 	User         *User       `json:"user"`
 	Interaction  int         `json:"interaction"`
+	Group        *Group      `json:"group,omitempty"` // Group information if this is a group post
 }
 
 func (p *Post) CreateTable() error {
@@ -42,10 +44,12 @@ func (p *Post) CreateTable() error {
     			post_id           	INTEGER NULL,
     			user_id           	INTEGER NOT NULL,
     			visibility       	VARCHAR NULL,
+    			group_id           	INTEGER NULL,
     			created_at           DATETIME DEFAULT CURRENT_TIMESTAMP,
     			updated_at           DATETIME DEFAULT CURRENT_TIMESTAMP,
     			FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
-    			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    			FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
 	)`)
 	return err
 }
@@ -60,7 +64,7 @@ func (p *Post) Index() ([]Model, error) {
 
 	for rows.Next() {
 		post := &Post{}
-		err = rows.Scan(&post.ID, &post.Title, &post.Body, &post.Media, &post.Likes, &post.Dislikes, &post.PostID, &post.UserID, &post.Visibility, &post.CreatedAt, &post.UpdatedAt)
+		err = rows.Scan(&post.ID, &post.Title, &post.Body, &post.Media, &post.Likes, &post.Dislikes, &post.PostID, &post.UserID, &post.Visibility, &post.GroupID, &post.CreatedAt, &post.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +90,7 @@ func (p *Post) Create() error {
 		return errors.New("post already exists")
 	}
 
-	result, err := DB.Exec(`INSERT INTO posts (title, body, media, post_id, user_id, visibility) VALUES (?, ?, ?, ?, ?, ?)`, p.Title, p.Body, p.Media, p.PostID, p.UserID, p.Visibility)
+	result, err := DB.Exec(`INSERT INTO posts (title, body, media, post_id, user_id, visibility, group_id) VALUES (?, ?, ?, ?, ?, ?, ?)`, p.Title, p.Body, p.Media, p.PostID, p.UserID, p.Visibility, p.GroupID)
 	if err != nil {
 		return err
 	}
@@ -105,7 +109,7 @@ func (p *Post) Update() error {
 		return errors.New("post does not exist")
 	}
 
-	_, err := DB.Exec(`UPDATE posts SET title = ?, body = ?, media = ?, likes = ?, dislikes = ?, post_id = ?, user_id = ?, visibility = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, p.Title, p.Body, p.Media, p.Likes, p.Dislikes, p.PostID, p.UserID, p.Visibility, p.ID)
+	_, err := DB.Exec(`UPDATE posts SET title = ?, body = ?, media = ?, likes = ?, dislikes = ?, post_id = ?, user_id = ?, visibility = ?, group_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, p.Title, p.Body, p.Media, p.Likes, p.Dislikes, p.PostID, p.UserID, p.Visibility, p.GroupID, p.ID)
 	return err
 }
 
@@ -128,7 +132,7 @@ func (p *Post) Refresh() error {
 		return errors.New("post does not exist")
 	}
 
-	err := DB.QueryRow(`SELECT * FROM posts WHERE id = ?`, p.ID).Scan(&p.ID, &p.Title, &p.Body, &p.Media, &p.Likes, &p.Dislikes, &p.PostID, &p.UserID, &p.Visibility, &p.CreatedAt, &p.UpdatedAt)
+	err := DB.QueryRow(`SELECT * FROM posts WHERE id = ?`, p.ID).Scan(&p.ID, &p.Title, &p.Body, &p.Media, &p.Likes, &p.Dislikes, &p.PostID, &p.UserID, &p.Visibility, &p.GroupID, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return errors.New("post does not exist")
 	}
@@ -183,7 +187,7 @@ func (p *Post) GetComments() error {
 
 	for rows.Next() {
 		comment := &Post{}
-		err = rows.Scan(&comment.ID, &comment.Title, &comment.Body, &comment.Media, &comment.Likes, &comment.Dislikes, &comment.PostID, &comment.UserID, &comment.Visibility, &comment.CreatedAt, &comment.UpdatedAt)
+		err = rows.Scan(&comment.ID, &comment.Title, &comment.Body, &comment.Media, &comment.Likes, &comment.Dislikes, &comment.PostID, &comment.UserID, &comment.Visibility, &comment.GroupID, &comment.CreatedAt, &comment.UpdatedAt)
 		if err != nil {
 			return err
 		}
@@ -297,5 +301,77 @@ func (p *Post) GetRelations() error {
 		return err
 	}
 
+	// Load original post if this is a comment
+	if p.PostID.Valid {
+		err = p.GetOriginalPost()
+		if err != nil {
+			return err
+		}
+	}
+
+	// Load group if this is a group post
+	if p.GroupID.Valid {
+		err = p.GetGroup()
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+// GetGroup loads the group information for a post if it's a group post
+func (p *Post) GetGroup() error {
+	if !p.GroupID.Valid {
+		return nil
+	}
+
+	group := &Group{ID: int(p.GroupID.Int64)}
+	err := group.Refresh()
+	if err != nil {
+		return err
+	}
+
+	p.Group = group
+
+	return nil
+}
+
+// GetGroupPosts retrieves all posts for a specific group
+func GetGroupPosts(groupID, userID int) ([]*Post, error) {
+	var posts []*Post
+
+	rows, err := DB.Query(`
+		SELECT id FROM posts 
+		WHERE group_id = ? 
+		ORDER BY created_at DESC
+	`, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+
+		post := &Post{ID: id}
+		if err := post.Refresh(); err != nil {
+			return nil, err
+		}
+
+		// Load relations for each post
+		if err := post.GetRelations(); err != nil {
+			return nil, err
+		}
+
+		// Get user interaction with this post
+		post.GetInteraction(userID)
+
+		posts = append(posts, post)
+	}
+
+	return posts, nil
 }

@@ -42,7 +42,9 @@ func IndexPosts(w http.ResponseWriter, r *http.Request) {
 	var filteredPosts []models.Model
 	for _, p := range posts {
 		postObj := p.(*models.Post)
-		
+		if postObj.Visibility == "group" {
+			continue
+		}
 		// Public posts are visible to everyone
 		if postObj.Visibility == "public" {
 			filteredPosts = append(filteredPosts, p)
