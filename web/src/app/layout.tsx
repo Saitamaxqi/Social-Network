@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from '@/contexts/AuthContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { WebSocketProvider } from '@/contexts/WebSocketContext';
+import { GroupProvider } from '@/contexts/GroupContext';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,7 +33,9 @@ export default function RootLayout({
         <AuthProvider>
           <WebSocketProvider>
             <NotificationProvider>
-              {children}
+              <GroupProvider>
+                {children}
+              </GroupProvider>
             </NotificationProvider>
           </WebSocketProvider>
         </AuthProvider>

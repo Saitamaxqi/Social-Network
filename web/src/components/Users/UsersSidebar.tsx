@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import styles from './UsersSidebar.module.css';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useGroup } from '@/contexts/GroupContext';
 
 interface ChatUser {
   id: number;
@@ -66,6 +67,11 @@ export default function UsersSidebar() {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const { currentGroupId, showGroupMembersOnly, setShowGroupMembersOnly, groupMembers } = useGroup();
+  
+  // Check if we're on a group page
+  const isGroupPage = pathname?.startsWith('/groups/') || false;
 
   useEffect(() => {
     if (!user) return;
@@ -102,6 +108,11 @@ export default function UsersSidebar() {
     router.push(`/chats?userId=${userId}`);
   };
 
+  // Filter users based on group membership if filter is active
+  const filteredUsers = showGroupMembersOnly && isGroupPage && chatData?.recentChats
+    ? chatData.recentChats.filter(user => groupMembers.includes(user.id))
+    : chatData?.recentChats || [];
+
   return (
     <div className={styles.sidebar}>
       {/* Header for mobile view */}
@@ -118,15 +129,25 @@ export default function UsersSidebar() {
       </div>
 
       <div className={styles.sidebarContent}>
+        {isGroupPage && (
+          <div className={styles.filterContainer}>
+            <button 
+              className={`${styles.filterButton} ${showGroupMembersOnly ? styles.filterActive : ''}`}
+              onClick={() => setShowGroupMembersOnly(!showGroupMembersOnly)}
+            >
+              {showGroupMembersOnly ? '✓ Show Group Members' : '☐ Show Group Members'}
+            </button>
+          </div>
+        )}
         <div className={styles.userList}>
           {isLoading ? (
             <div className={styles.loadingText}>Loading users...</div>
           ) : error ? (
             <div className={styles.errorText}>{error}</div>
-          ) : !chatData?.recentChats?.length ? (
-            <div className={styles.emptyText}>No users found</div>
+          ) : !filteredUsers.length ? (
+            <div className={styles.emptyText}>{showGroupMembersOnly ? 'No group members found' : 'No users found'}</div>
           ) : (
-            chatData.recentChats.map((user) => (
+            filteredUsers.map((user) => (
               <div key={user.id} className={styles.userCard}>
                 <Link href={`/profile/${user.id}`} className={styles.userLink}>
                   <div className={styles.avatarContainer}>
@@ -145,8 +166,8 @@ export default function UsersSidebar() {
                     </div>
                     {/* Online/Offline status indicator */}
                     <div 
-                      className={`${styles.onlineStatus} ${chatData.onlineUsers[user.username] ? styles.online : styles.offline}`}
-                      title={chatData.onlineUsers[user.username] ? 'Online' : 'Offline'}
+                      className={`${styles.onlineStatus} ${chatData?.onlineUsers?.[user.username] ? styles.online : styles.offline}`}
+                      title={chatData?.onlineUsers?.[user.username] ? 'Online' : 'Offline'}
                     />
                   </div>
                   <span className={styles.username} title={user.username}>
@@ -156,12 +177,12 @@ export default function UsersSidebar() {
                 {/* Chat icon button */}
                 <div className={styles.buttonContainer}>
                   {/* Follow Button */}
-                  {chatData.followStatuses[user.username] !== undefined && (
+                  {chatData?.followStatuses?.[user.username] !== undefined && (
                     <button
                       onClick={async (e) => {
                         e.preventDefault(); // Prevent navigation
                         try {
-                          const currentStatus = chatData.followStatuses[user.username];
+                          const currentStatus = chatData?.followStatuses?.[user.username];
                           const isFollowing = currentStatus.status !== 'none';
                           
                           const formData = new FormData();
@@ -195,9 +216,9 @@ export default function UsersSidebar() {
                           console.error('Error updating follow status:', error);
                         }
                       }}
-                      className={`${styles.followButton} ${getFollowButtonStyles(chatData.followStatuses[user.username])}`}
+                      className={`${styles.followButton} ${getFollowButtonStyles(chatData?.followStatuses?.[user.username])}`}
                     >
-                      {getFollowButtonText(chatData.followStatuses[user.username])}
+                      {getFollowButtonText(chatData?.followStatuses?.[user.username])}
                     </button>
                   )}
                   {/* Chat Button */}

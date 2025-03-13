@@ -3,7 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGroup } from '@/contexts/GroupContext';
 import Link from 'next/link';
+import MainLayout from '@/components/Layout/MainLayout';
 
 interface Group {
   id: number;
@@ -51,6 +53,19 @@ export default function GroupDetailPage() {
   const [isMember, setIsMember] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const { user } = useAuth();
+  const { setCurrentGroupId, setGroupMembers } = useGroup();
+
+  useEffect(() => {
+    // Set the current group ID in context when component mounts
+    if (groupId && typeof groupId === 'string') {
+      setCurrentGroupId(groupId);
+    }
+    
+    return () => {
+      // Clear the group ID when component unmounts
+      setCurrentGroupId(null);
+    };
+  }, [groupId, setCurrentGroupId]);
 
   useEffect(() => {
     const fetchGroupDetails = async () => {
@@ -66,6 +81,14 @@ export default function GroupDetailPage() {
         
         const groupData = await groupResponse.json();
         setGroup(groupData);
+        
+        // Extract member IDs and update context
+        if (groupData.members && Array.isArray(groupData.members)) {
+          const memberIds = groupData.members
+            .filter((member: any) => member.status === 'member')
+            .map((member: any) => member.user_id);
+          setGroupMembers(memberIds);
+        }
         
         // Check if user is a member of the group
         const isMemberOfGroup = groupData.members?.some(
@@ -159,7 +182,8 @@ export default function GroupDetailPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <MainLayout>
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
       {/* Group Header */}
       <div className="bg-gray-800 rounded-lg p-6 mb-6 shadow-lg">
         <div className="flex justify-between items-start">
@@ -372,5 +396,6 @@ export default function GroupDetailPage() {
         )}
       </div>
     </div>
+    </MainLayout>
   );
 }
