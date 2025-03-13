@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
-
-export async function GET(req: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+    
     // Get all cookies from the request to forward to the backend
-    const cookieHeader = req.headers.get('cookie') || '';
+    const cookieHeader = request.headers.get('cookie') || '';
     
     if (!cookieHeader) {
       return NextResponse.json(
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const response = await axios.get(`${BASE_URL}/notifications`, {
+    const response = await axios.get(`${apiUrl}/close-friends`, {
       headers: {
         'Cookie': cookieHeader
       },
@@ -23,12 +23,12 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json(response.data);
-  } catch (error) {
-    console.error('Error fetching notifications:', error);
+  } catch (error: any) {
+    console.error('Error fetching close friends:', error);
     
     if (axios.isAxiosError(error)) {
       const status = error.response?.status || 500;
-      const errorMessage = error.response?.data?.error || 'Failed to fetch notifications';
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to fetch close friends';
       
       console.error('Axios error details:', {
         status,
@@ -43,16 +43,19 @@ export async function GET(req: NextRequest) {
     }
     
     return NextResponse.json(
-      { error: 'Failed to fetch notifications' },
+      { error: 'Failed to fetch close friends' },
       { status: 500 }
     );
   }
 }
 
-export async function PUT(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+    const body = await request.json();
+    
     // Get all cookies from the request to forward to the backend
-    const cookieHeader = req.headers.get('cookie') || '';
+    const cookieHeader = request.headers.get('cookie') || '';
     
     if (!cookieHeader) {
       return NextResponse.json(
@@ -61,20 +64,21 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const response = await axios.put(`${BASE_URL}/notifications`, null, {
+    const response = await axios.post(`${apiUrl}/close-friends`, body, {
       headers: {
+        'Content-Type': 'application/json',
         'Cookie': cookieHeader
       },
       withCredentials: true
     });
 
-    return NextResponse.json({ message: 'All notifications marked as read' });
-  } catch (error) {
-    console.error('Error marking all notifications as read:', error);
+    return NextResponse.json(response.data);
+  } catch (error: any) {
+    console.error('Error adding close friend:', error);
     
     if (axios.isAxiosError(error)) {
       const status = error.response?.status || 500;
-      const errorMessage = error.response?.data?.error || 'Failed to mark all notifications as read';
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to add close friend';
       
       console.error('Axios error details:', {
         status,
@@ -89,7 +93,7 @@ export async function PUT(req: NextRequest) {
     }
     
     return NextResponse.json(
-      { error: 'Failed to mark all notifications as read' },
+      { error: 'Failed to add close friend' },
       { status: 500 }
     );
   }

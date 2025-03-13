@@ -21,6 +21,8 @@ export default function CreatePostPage() {
   const [success, setSuccess] = useState(false);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [visibility, setVisibility] = useState('public');
+  const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const router = useRouter();
@@ -90,13 +92,11 @@ export default function CreatePostPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
-    if (!user) {
-      setError('You must be logged in to create a post');
-      return;
-    }
+    if (submitting) return;
     
-    if (!title.trim() && !content.trim()) {
-      setError('Please provide either a title or content for your post');
+    // Validate form
+    if (!content.trim()) {
+      setError('Please enter some content for your post');
       return;
     }
     
@@ -105,33 +105,39 @@ export default function CreatePostPage() {
       return;
     }
     
-    setLoading(true);
+    setSubmitting(true);
     setError('');
     
     try {
       const formData = new FormData();
       formData.append('title', title);
-      formData.append('content', content);
+      formData.append('body', content);
       
-      // Append each category ID separately
-      selectedCategories.forEach(categoryId => {
-        formData.append('categories', categoryId);
-      });
+      // Add categories if selected
+      if (selectedCategories.length > 0) {
+        formData.append('categories', selectedCategories.join(','));
+      }
       
+      // Add media file if selected
       if (mediaFile) {
         formData.append('media', mediaFile);
       }
       
-      console.log('Submitting form data:', {
+      // Add visibility setting (default to public)
+      formData.append('visibility', visibility || 'public');
+      
+      console.log('Submitting post with data:', {
         title,
         content,
         categories: selectedCategories,
-        hasMedia: !!mediaFile
+        hasMedia: !!mediaFile,
+        visibility
       });
       
-      const response = await fetch('/api/posts/create', {
+      const response = await fetch('/api/auth/posts/create', {
         method: 'POST',
         body: formData,
+        credentials: 'include' // Include cookies in the request
       });
       
       if (!response.ok) {
@@ -157,7 +163,7 @@ export default function CreatePostPage() {
       console.error('Error creating post:', error);
       setError(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -247,6 +253,47 @@ export default function CreatePostPage() {
             
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
+                Visibility
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVisibility('public')}
+                  className={`px-3 py-1.5 rounded-full text-sm ${
+                    visibility === 'public'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  Public
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibility('private')}
+                  className={`px-3 py-1.5 rounded-full text-sm ${
+                    visibility === 'private'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  Private
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibility('close_friends')}
+                  className={`px-3 py-1.5 rounded-full text-sm ${
+                    visibility === 'close_friends'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  Close Friends
+                </button>
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
                 Media (Optional)
               </label>
               <div className="flex flex-col space-y-3">
@@ -307,12 +354,12 @@ export default function CreatePostPage() {
               </button>
               <button
                 type="submit"
-                disabled={loading || success}
+                disabled={loading || success || submitting}
                 className={`px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors ${
-                  (loading || success) && 'opacity-70 cursor-not-allowed'
+                  (loading || success || submitting) && 'opacity-70 cursor-not-allowed'
                 }`}
               >
-                {loading ? 'Creating...' : 'Create Post'}
+                {submitting ? 'Creating...' : 'Create Post'}
               </button>
             </div>
           </form>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
+import { getApiUrl } from '@/utils/config';
 
 export async function PUT(
   request: NextRequest,
@@ -20,31 +21,18 @@ export async function PUT(
       );
     }
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
-    const sessionCookie = request.cookies.get('session')?.value || '';
+    const apiUrl = getApiUrl();
     
-    if (!sessionCookie) {
+    // Get all cookies from the request to forward to the backend
+    const cookieHeader = request.headers.get('cookie') || '';
+    
+    if (!cookieHeader) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Authentication required' },
         { status: 401 }
       );
     }
     
-    // Check if user is authenticated
-    try {
-      await axios.get(`${apiUrl}/activity`, {
-        headers: {
-          Cookie: `session=${sessionCookie}`,
-        },
-        withCredentials: true
-      });
-    } catch (error) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     // Create form data for the request
     const formData = new URLSearchParams();
     formData.append('type', type);
@@ -56,7 +44,7 @@ export async function PUT(
       {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          Cookie: `session=${sessionCookie}`,
+          'Cookie': cookieHeader
         },
         withCredentials: true
       }
@@ -67,7 +55,7 @@ export async function PUT(
       `${apiUrl}/posts/${postId}`,
       {
         headers: {
-          Cookie: `session=${sessionCookie}`,
+          'Cookie': cookieHeader
         },
         withCredentials: true
       }
@@ -86,6 +74,12 @@ export async function PUT(
     if (axios.isAxiosError(error)) {
       const status = error.response?.status || 500;
       const errorMessage = error.response?.data?.error || 'Failed to interact with post';
+      
+      console.error('Axios error details:', {
+        status,
+        message: errorMessage,
+        data: error.response?.data
+      });
       
       return NextResponse.json(
         { error: errorMessage },

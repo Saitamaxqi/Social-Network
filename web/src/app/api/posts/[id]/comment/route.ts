@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
+import { getApiUrl } from '@/utils/config';
 
 export async function POST(
   request: NextRequest,
@@ -32,27 +33,14 @@ export async function POST(
       );
     }
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
-    const sessionCookie = request.cookies.get('session')?.value || '';
+    const apiUrl = getApiUrl();
     
-    if (!sessionCookie) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    // Get all cookies from the request to forward to the backend
+    const cookieHeader = request.headers.get('cookie') || '';
     
-    // Check if user is authenticated
-    try {
-      await axios.get(`${apiUrl}/activity`, {
-        headers: {
-          Cookie: `session=${sessionCookie}`,
-        },
-        withCredentials: true
-      });
-    } catch (error) {
+    if (!cookieHeader) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Authentication required' },
         { status: 401 }
       );
     }
@@ -66,6 +54,8 @@ export async function POST(
       backendFormData.append('media', mediaFile);
     }
 
+    console.log(`Sending comment to ${apiUrl}/posts/${postId}/comment`);
+    
     // Make the API call to the backend
     const response = await axios.post(
       `${apiUrl}/posts/${postId}/comment`, 
@@ -73,7 +63,7 @@ export async function POST(
       {
         headers: {
           'Content-Type': 'multipart/form-data',
-          Cookie: `session=${sessionCookie}`,
+          'Cookie': cookieHeader
         },
         withCredentials: true
       }
@@ -102,6 +92,12 @@ export async function POST(
     if (axios.isAxiosError(error)) {
       const status = error.response?.status || 500;
       const errorMessage = error.response?.data?.error || 'Failed to add comment';
+      
+      console.error('Axios error details:', {
+        status,
+        message: errorMessage,
+        data: error.response?.data
+      });
       
       return NextResponse.json(
         { error: errorMessage },

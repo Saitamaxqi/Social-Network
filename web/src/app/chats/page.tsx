@@ -27,7 +27,7 @@ export default function ChatsPage() {
     const checkAuth = async () => {
       try {
         // Use the correct API endpoint path to match our API route
-        const response = await fetch('/api/check-session', {
+        const response = await fetch('/api/auth/check-session', {
           credentials: 'include' // Include cookies in the request
         });
         if (!response.ok) {

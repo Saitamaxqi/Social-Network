@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { GlobeAltIcon, LockClosedIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 
 interface Category {
   id: string;
@@ -28,6 +29,7 @@ interface Post {
   interaction?: number;
   comments?: Post[];
   post_id?: string;
+  visibility?: string;
 }
 
 interface PostProps {
@@ -154,7 +156,9 @@ export default function Post({ categoryId }: PostProps) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to interact with post');
+        const errorData = await response.json();
+        console.error('Interaction error:', errorData);
+        throw new Error(errorData.error || 'Failed to interact with post');
       }
 
       const data = await response.json();
@@ -168,10 +172,11 @@ export default function Post({ categoryId }: PostProps) {
               const userInteractions = JSON.parse(localStorage.getItem('postInteractions') || '{}');
               userInteractions[postId] = data.interaction;
               localStorage.setItem('postInteractions', JSON.stringify(userInteractions));
-            } catch (error) {
-              console.error('Error storing interaction in localStorage:', error);
+            } catch (err) {
+              console.error('Error storing interaction in localStorage:', err);
             }
             
+            // Return updated post with new interaction data
             return {
               ...post,
               likes: data.likes || post.likes,
@@ -211,6 +216,8 @@ export default function Post({ categoryId }: PostProps) {
         formData.append('media', mediaFile);
       }
       
+      console.log(`Submitting comment for post ${postId}`);
+      
       const response = await fetch(`/api/posts/${postId}/comment`, {
         method: 'POST',
         body: formData,
@@ -218,7 +225,9 @@ export default function Post({ categoryId }: PostProps) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit comment');
+        const errorData = await response.json();
+        console.error('Comment submission error:', errorData);
+        throw new Error(errorData.error || 'Failed to submit comment');
       }
 
       const newComment = await response.json();
@@ -248,7 +257,17 @@ export default function Post({ categoryId }: PostProps) {
         [postId]: ''
       }));
       
-      clearCommentMedia(postId);
+      setCommentMediaFiles(prev => {
+        const newFiles = { ...prev };
+        delete newFiles[postId];
+        return newFiles;
+      });
+      
+      setCommentMediaPreviews(prev => {
+        const newPreviews = { ...prev };
+        delete newPreviews[postId];
+        return newPreviews;
+      });
     } catch (error) {
       console.error('Error submitting comment:', error);
     }
@@ -609,7 +628,23 @@ export default function Post({ categoryId }: PostProps) {
               className="border border-gray-700 rounded-lg p-4 sm:p-6 hover:shadow-lg transition-shadow bg-white/5 backdrop-blur-sm w-full"
             >
               <div className="flex justify-between items-start mb-3 sm:mb-4">
-                <h3 className="font-semibold text-base sm:text-xl text-white">{post.author?.username || post.user?.username || 'Unknown User'}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-base sm:text-xl text-white">{post.author?.username || post.user?.username || 'Unknown User'}</h3>
+                  {/* Visibility indicator */}
+                  {post.visibility && (
+                    <span className="flex items-center text-xs text-gray-400" title={`Visibility: ${post.visibility}`}>
+                      {post.visibility === 'public' && (
+                        <GlobeAltIcon className="h-4 w-4 text-gray-400" />
+                      )}
+                      {post.visibility === 'private' && (
+                        <LockClosedIcon className="h-4 w-4 text-gray-400" />
+                      )}
+                      {post.visibility === 'close_friends' && (
+                        <UserGroupIcon className="h-4 w-4 text-blue-400" />
+                      )}
+                    </span>
+                  )}
+                </div>
                 <span className="text-xs sm:text-sm text-gray-400">
                   {post.created_at ? timeSince(post.created_at) + ' ago' : 'Unknown time'}
                 </span>
@@ -696,7 +731,7 @@ export default function Post({ categoryId }: PostProps) {
                   }`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={post.interaction === -1 ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.095c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.006L17 9V4m-7 10h2" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.095c.5 0 .905-.405.905-.904a3.61 3.61 0 01-.608-2.006L13 11v-3m0 0v-3m0 0v-3m0 0V5" />
                   </svg>
                   <span>{post.dislikes || 0}</span>
                 </button>
