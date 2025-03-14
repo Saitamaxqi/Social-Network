@@ -441,16 +441,23 @@ func InteractPost(w http.ResponseWriter, r *http.Request) {
 		Date:     time.Now(),
 	}
 	
-	hub.SendToUser(post.UserID, map[string]interface{}{
-		"type": "notification",
-		"notification": notification,
-	})
+
 
 	err = notification.Create()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}	
+	err = notification.Refresh()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+	
+	hub.SendToUser(post.UserID, map[string]interface{}{
+		"type": "notification",
+		"notification": notification,
+	})
 
 	RespondWithJSON(w, http.StatusOK, map[string]interface{}{"interaction": interaction})
 }
@@ -522,16 +529,24 @@ func CommentPost(w http.ResponseWriter, r *http.Request) {
 		LinkID:   comment.ID,
 		Date:     time.Now(),
 	}
-	hub.SendToUser(post.UserID, map[string]interface{}{
-		"type": "notification",
-		"notification": notification,
-	})
+
 
 	err = notification.Create()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
+	}	
+	
+	err = notification.Refresh()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}	
+	
+	hub.SendToUser(post.UserID, map[string]interface{}{
+		"type": "notification",
+		"notification": notification,
+	})
 
 	RespondWithJSON(w, http.StatusOK, comment)
 }

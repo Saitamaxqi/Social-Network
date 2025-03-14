@@ -69,7 +69,11 @@ func CreateFollow(w http.ResponseWriter, r *http.Request) {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
         }
-    
+        err = notification.Refresh()
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
         hub.SendToUser(targetUserID, map[string]interface{}{
             "type":         "notification",
             "notification": notification,
@@ -89,7 +93,11 @@ func CreateFollow(w http.ResponseWriter, r *http.Request) {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
         }
-    
+        err = notification.Refresh()
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
         hub.SendToUser(targetUserID, map[string]interface{}{
             "type":         "notification",
             "notification": notification,
@@ -147,7 +155,11 @@ func UpdateFollow(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
+		err = notification.Refresh()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		// Send real-time notification
 		hub.SendToUser(follow.FollowerID, map[string]interface{}{
 			"type":         "notification",
@@ -186,7 +198,11 @@ func UpdateFollow(w http.ResponseWriter, r *http.Request) {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
-
+    err =notification.Refresh()
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
     // Send real-time notification
     hub.SendToUser(follow.FollowerID, map[string]interface{}{
         "type":         "notification",

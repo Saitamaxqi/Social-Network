@@ -96,16 +96,22 @@ func PostPrivateMessageController(w http.ResponseWriter, r *http.Request) {
 		Date:     time.Now(),
 	}
 
-	hub.SendToUser(recipientID, map[string]interface{}{
-		"type":         "notification",
-		"notification": notification,
-	})
+
 
 	err = notification.Create()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}	
+	err = notification.Refresh()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+	hub.SendToUser(recipientID, map[string]interface{}{
+		"type":         "notification",
+		"notification": notification,
+	})
 	//add a unique id for each message
 	hub.SendToUser(recipientID, map[string]interface{}{
 		"type": "message",

@@ -64,7 +64,7 @@ func RegisterAPIs() {
 
     // Group membership routes
     POST("/groups/{id}/join", controllers.RequestToJoinGroup, requests.DefaultRequest, middlewares.AuthMiddleware)      // Request to join group
-    POST("/groups/{id}/invite", controllers.InviteToGroup, requests.GroupMemberRequest, middlewares.AuthMiddleware)     // Invite user to group
+    POST("/groups/{id}/invite", controllers.InviteToGroup, requests.DefaultRequest, middlewares.AuthMiddleware)     // Invite user to group
     POST("/groups/{id}/respond-invite", controllers.RespondToInvitation, requests.DefaultRequest, middlewares.AuthMiddleware)  // Respond to invitation
     POST("/groups/{id}/respond-request", controllers.RespondToJoinRequest, requests.DefaultRequest, middlewares.AuthMiddleware)  // Respond to join request
 

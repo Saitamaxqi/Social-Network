@@ -54,7 +54,7 @@ export default function NotificationDropdown() {
     await markAsRead(notificationId);
   };
 
-  const handleFollowAction = async (followId: number, status: 'accepted' | 'declined', e: React.MouseEvent) => {
+  const handleFollowAction = async (notification: any, status: 'accepted' | 'declined', e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -62,7 +62,7 @@ export default function NotificationDropdown() {
       const formData = new FormData();
       formData.append('status', status);
       
-      const response = await fetch(`/api/follow/${followId}`, {
+      const response = await fetch(`/api/follow/${notification.link_id}`, {
         method: 'PUT',
         credentials: 'include',
         body: formData,
@@ -70,8 +70,6 @@ export default function NotificationDropdown() {
 
       if (!response.ok) throw new Error('Failed to update follow status');
       
-      // Find and delete the follow request notification
-      const notification = notifications.find(n => n.type === 'follow request' && n.link_id === followId);
       if (notification) {
         // Delete notification from database
         const deleteResponse = await fetch(`/api/notifications/${notification.id}`, {
@@ -93,6 +91,45 @@ export default function NotificationDropdown() {
     }
   };
 
+  const handleGroupInvitationAction = async (notification: any, status: 'accepted' | 'declined', e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    try {
+      const formData = new FormData();
+      formData.append('status', status);
+      
+      const response = await fetch(`/api/groups/${notification.link_id}/respond-invite`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Failed to respond to group invitation');
+      
+      // Find and delete the group invitation notification
+
+      if (notification) {
+        // Delete notification from database
+        const deleteResponse = await fetch(`/api/notifications/${notification.id}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+
+        if (!deleteResponse.ok) {
+          throw new Error('Failed to delete notification');
+        }
+
+        // Update notifications in context to remove this one
+        const updatedNotifications = notifications.filter(n => n.id !== notification.id);
+        setNotifications(updatedNotifications);
+        if (unreadCount > 0) setUnreadCount(unreadCount - 1);
+      }
+    } catch (error) {
+      console.error('Error responding to group invitation:', error);
+    }
+  };
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'post':
@@ -101,6 +138,8 @@ export default function NotificationDropdown() {
         return '💬';
       case 'follow':
       case 'follow request':
+        return '👥';
+      case 'group_invitation':
         return '👥';
       default:
         return '🔔';
@@ -115,6 +154,8 @@ export default function NotificationDropdown() {
         return `/chats?userId=${linkId}`;
       case 'follow':
         return `/profile/${linkId}`;
+      case 'group_invitation':
+        return `/groups/${linkId}`;
       default:
         return '#';
     }
@@ -172,13 +213,29 @@ export default function NotificationDropdown() {
                       {notification.type === 'follow request' && (
                         <div className="flex gap-2 mt-2">
                           <button
-                            onClick={(e) => handleFollowAction(notification.link_id, 'accepted', e)}
+                            onClick={(e) => handleFollowAction(notification, 'accepted', e)}
                             className="px-3 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors duration-200"
                           >
                             Accept
                           </button>
                           <button
-                            onClick={(e) => handleFollowAction(notification.link_id, 'declined', e)}
+                            onClick={(e) => handleFollowAction(notification, 'declined', e)}
+                            className="px-3 py-1 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors duration-200"
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      )}
+                      {notification.type === 'group_invitation' && (
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            onClick={(e) => handleGroupInvitationAction(notification, 'accepted', e)}
+                            className="px-3 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors duration-200"
+                          >
+                            Accept
+                          </button>
+                          <button
+                            onClick={(e) => handleGroupInvitationAction(notification, 'declined', e)}
                             className="px-3 py-1 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors duration-200"
                           >
                             Decline

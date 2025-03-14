@@ -103,6 +103,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
             const notification = data.notification;
             
             // Convert backend notification format to frontend format if needed
+            console.log("notification:",notification);
             const formattedNotification: Notification = {
               id: notification.ID || notification.id || 0,
               user_id: notification.UserID || notification.user_id || 0,
@@ -113,6 +114,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
               link_id: notification.LinkID || notification.link_id || 0,
               date: notification.Date || notification.date || new Date().toISOString(),
             };
+            console.log("formatted notification:",formattedNotification);
             
             setNotifications(prev => [formattedNotification, ...(prev || [])]);
           }
