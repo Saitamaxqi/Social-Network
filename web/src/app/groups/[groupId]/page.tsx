@@ -52,6 +52,8 @@ export default function GroupDetailPage() {
   const [activeTab, setActiveTab] = useState<TabType>('chat');
   const [isMember, setIsMember] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const [isJoinRequestLoading, setIsJoinRequestLoading] = useState(false);
+  const [joinRequestId, setJoinRequestId] = useState<number | null>(null);
   const { user } = useAuth();
   const { setCurrentGroupId, setGroupMembers } = useGroup();
 
@@ -68,81 +70,51 @@ export default function GroupDetailPage() {
   }, [groupId, setCurrentGroupId]);
 
   useEffect(() => {
-    const fetchGroupDetails = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch group details from the API
-        const groupResponse = await fetch(`/api/groups/${groupId}`);
-        
-        if (!groupResponse.ok) {
-          throw new Error(`Error fetching group: ${groupResponse.status}`);
-        }
-        
-        const groupData = await groupResponse.json();
-        setGroup(groupData);
-        
-        // Extract member IDs and update context
-        if (groupData.members && Array.isArray(groupData.members)) {
-          const memberIds = groupData.members
-            .filter((member: any) => member.status === 'member')
-            .map((member: any) => member.user_id);
-          setGroupMembers(memberIds);
-        }
-        
-        // Check if user is a member of the group
-        const isMemberOfGroup = groupData.members?.some(
-          (member: any) => member.user_id === user?.id && member.status === 'member'
-        ) || false;
-        
-        setIsMember(isMemberOfGroup);
-        
-        // Check if user has a pending request
-        const isPendingRequest = groupData.members?.some(
-          (member: any) => member.user_id === user?.id && member.status === 'requested'
-        ) || false;
-        
-        setIsPending(isPendingRequest);
-        
-        // Fetch posts if user is a member
-        if (isMemberOfGroup) {
-          const postsResponse = await fetch(`/api/groups/${groupId}/posts`);
-          
-          if (postsResponse.ok) {
-            const postsData = await postsResponse.json();
-            setPosts(postsData);
-          } else {
-            setPosts([]);
-          }
-          
-          // Fetch events if user is a member
-          const eventsResponse = await fetch(`/api/groups/${groupId}/events`);
-          
-          if (eventsResponse.ok) {
-            const eventsData = await eventsResponse.json();
-            setEvents(eventsData);
-          } else {
-            setEvents([]);
-          }
-        }
-        
-        setLoading(false);
-        
-      } catch (error) {
-        console.error('Error fetching group details:', error);
-        setLoading(false);
-      }
-    };
-
     if (groupId) {
       fetchGroupDetails();
     }
   }, [groupId, user]);
 
+  const [joinRequestError, setJoinRequestError] = useState<string | null>(null);
+
   const handleJoinRequest = async () => {
     try {
-      const response = await fetch(`/api/groups/${groupId}`, {
+      setJoinRequestError(null);
+      setIsJoinRequestLoading(true);
+      const response = await fetch(`/api/groups/${groupId}/join`, {
         method: 'POST',
+        credentials: 'include',
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        setJoinRequestError(data.error || `Error: ${response.status}`);
+        console.error('Error response:', data);
+        return;
+      }
+      
+      // Set pending status and request ID after successful request
+      setIsPending(true);
+      setJoinRequestId(data.id);
+      
+      // Refresh the group data to update the UI
+      fetchGroupDetails();
+    } catch (error) {
+      console.error('Error requesting to join group:', error);
+      setJoinRequestError('Failed to send join request. Please try again.');
+    } finally {
+      setIsJoinRequestLoading(false);
+    }
+  };
+  
+  const handleCancelJoinRequest = async () => {
+    if (!joinRequestId) return;
+    
+    try {
+      setIsJoinRequestLoading(true);
+      const response = await fetch(`/api/groups/${groupId}/members/${joinRequestId}`, {
+        method: 'DELETE',
         credentials: 'include',
       });
       
@@ -150,14 +122,88 @@ export default function GroupDetailPage() {
         throw new Error(`Error: ${response.status}`);
       }
       
-      // Set pending status after successful request
-      setIsPending(true);
+      // Reset pending status after successful cancellation
+      setIsPending(false);
+      setJoinRequestId(null);
       
-      // Show success message
-      alert('Your request to join has been sent!');
+      // Refresh the group data to update the UI
+      fetchGroupDetails();
     } catch (error) {
-      console.error('Error requesting to join group:', error);
-      alert('Failed to send join request. Please try again.');
+      console.error('Error canceling join request:', error);
+      alert('Failed to cancel join request. Please try again.');
+    } finally {
+      setIsJoinRequestLoading(false);
+    }
+  };
+  
+  const fetchGroupDetails = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch group details from the API
+      const groupResponse = await fetch(`/api/groups/${groupId}`);
+      
+      if (!groupResponse.ok) {
+        throw new Error(`Error fetching group: ${groupResponse.status}`);
+      }
+      
+      const groupData = await groupResponse.json();
+      setGroup(groupData);
+      
+      // Extract member IDs and update context
+      if (groupData.members && Array.isArray(groupData.members)) {
+        const memberIds = groupData.members
+          .filter((member: any) => member.status === 'member')
+          .map((member: any) => member.user_id);
+        setGroupMembers(memberIds);
+      }
+      
+      // Check if user is a member of the group
+      const isMemberOfGroup = groupData.members?.some(
+        (member: any) => member.user_id === user?.id && member.status === 'member'
+      ) || false;
+      
+      setIsMember(isMemberOfGroup);
+      
+      // Check if user has a pending request
+      const pendingMember = groupData.members?.find(
+        (member: any) => member.user_id === user?.id && member.status === 'requested'
+      );
+      
+      setIsPending(!!pendingMember);
+      if (pendingMember) {
+        setJoinRequestId(pendingMember.id);
+      } else {
+        setJoinRequestId(null);
+      }
+      
+      // Fetch posts if user is a member
+      if (isMemberOfGroup) {
+        const postsResponse = await fetch(`/api/groups/${groupId}/posts`);
+        
+        if (postsResponse.ok) {
+          const postsData = await postsResponse.json();
+          setPosts(postsData);
+        } else {
+          setPosts([]);
+        }
+        
+        // Fetch events if user is a member
+        const eventsResponse = await fetch(`/api/groups/${groupId}/events`);
+        
+        if (eventsResponse.ok) {
+          const eventsData = await eventsResponse.json();
+          setEvents(eventsData);
+        } else {
+          setEvents([]);
+        }
+      }
+      
+      setLoading(false);
+      
+    } catch (error) {
+      console.error('Error fetching group details:', error);
+      setLoading(false);
     }
   };
 
@@ -197,17 +243,54 @@ export default function GroupDetailPage() {
           </div>
           
           {user && !isMember && !isPending && (
-            <button
-              onClick={handleJoinRequest}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-            >
-              Request to Join
-            </button>
+            <div className="flex flex-col">
+              <button
+                onClick={handleJoinRequest}
+                disabled={isJoinRequestLoading}
+                className={`px-4 py-2 ${isJoinRequestLoading ? 'bg-blue-500/50 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white rounded-md transition-colors flex items-center space-x-2`}
+              >
+                {isJoinRequestLoading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    <span>Requesting...</span>
+                  </>
+                ) : (
+                  'Request to Join'
+                )}
+              </button>
+              {joinRequestError && (
+                <div className="mt-2 text-red-400 text-sm">
+                  {joinRequestError}
+                </div>
+              )}
+            </div>
           )}
           
           {user && isPending && (
-            <div className="px-4 py-2 bg-yellow-600/30 text-yellow-200 rounded-md">
-              Join Request Pending
+            <div className="flex items-center space-x-2">
+              <div className="px-4 py-2 bg-yellow-600/30 text-yellow-200 rounded-md">
+                Join Request Pending
+              </div>
+              <button
+                onClick={handleCancelJoinRequest}
+                disabled={isJoinRequestLoading}
+                className={`px-3 py-2 ${isJoinRequestLoading ? 'bg-red-500/50 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'} text-white rounded-md transition-colors text-sm flex items-center space-x-1`}
+                title="Cancel join request"
+              >
+                {isJoinRequestLoading ? (
+                  <>
+                    <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    <span>Canceling...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span>Cancel</span>
+                  </>
+                )}
+              </button>
             </div>
           )}
         </div>

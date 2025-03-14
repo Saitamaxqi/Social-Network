@@ -681,3 +681,45 @@ func RespondToEvent(w http.ResponseWriter, r *http.Request) {
 
     RespondWithJSON(w, http.StatusOK, response)
 }
+
+// CancelJoinRequest handles cancellation of join requests by the requesting user
+func CancelJoinRequest(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+
+    user := r.Context().Value("user").(*models.User)
+    if user == nil {
+        http.Error(w, "Unauthorized", http.StatusUnauthorized)
+        return
+    }
+
+    groupID, err := strconv.Atoi(r.URL.Query().Get("group_id"))
+    if err != nil {
+        http.Error(w, "Invalid group ID", http.StatusBadRequest)
+        return
+    }
+
+    // Delete the join request
+    result, err := models.DB.Exec("DELETE FROM group_members WHERE group_id = ? AND user_id = ? AND status = 'requested'",
+        groupID, user.ID)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    // Check if any row was affected
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    if rowsAffected == 0 {
+        http.Error(w, "No join request found to cancel", http.StatusNotFound)
+        return
+    }
+
+    RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Join request canceled successfully"})
+}
