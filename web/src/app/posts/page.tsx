@@ -10,9 +10,7 @@ export default function PostsPage() {
   
   return (
     <MainLayout>
-      <Post 
-        categoryId={categoryId || undefined}
-      />
+      <Post />
     </MainLayout>
   );
 }

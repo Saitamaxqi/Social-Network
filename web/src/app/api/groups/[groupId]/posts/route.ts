@@ -1,6 +1,54 @@
 //Get endpoint for groupm posts using axios
 import { NextRequest, NextResponse } from 'next/server';
 
+// Define the backend post structure
+interface BackendPost {
+  id: number;
+  title: string;
+  body: string;
+  media: {
+    String: string;
+    Valid: boolean;
+  } | null;
+  likes: number;
+  dislikes: number;
+  created_at: string;
+  user: {
+    id: number;
+    username: string;
+  };
+  categories: Array<{
+    id: number;
+    name: string;
+  }>;
+  interaction?: number; // User's interaction with this post
+  group_id?: {
+    Int64: number;
+    Valid: boolean;
+  };
+}
+
+// Define the frontend post structure
+interface FrontendPost {
+  id: string;
+  title?: string;
+  content: string;
+  media?: string;
+  author: {
+    id: string;
+    username: string;
+  };
+  categories: Array<{
+    id: string;
+    name: string;
+  }>;
+  created_at: string;
+  likes: number;
+  dislikes: number;
+  interaction?: number; // User's interaction with this post
+  groupId?: string; // Group ID if the post belongs to a group
+}
+
 export async function GET(request: NextRequest, { params }: { params: { groupId: string } }) {
   try {
     const { groupId } = params;
@@ -34,9 +82,34 @@ export async function GET(request: NextRequest, { params }: { params: { groupId:
     
     console.log('Successfully fetched group posts');
     
-    const data = await response.json();
-    console.log(data);
-    return NextResponse.json(data);
+    const backendPosts = await response.json();
+    
+    if (!backendPosts || !Array.isArray(backendPosts)) {
+      return NextResponse.json([]);
+    }
+    
+    // Transform the data to match the frontend structure
+    const frontendPosts: FrontendPost[] = backendPosts.map((post: BackendPost) => ({
+      id: String(post.id),
+      title: post.title || undefined,
+      content: post.body || '',
+      media: post.media && post.media.Valid ? post.media.String : undefined,
+      author: {
+        id: String(post.user?.id || '0'),
+        username: post.user?.username || 'Unknown User'
+      },
+      categories: (post.categories || []).map(cat => ({
+        id: String(cat.id),
+        name: cat.name
+      })),
+      created_at: post.created_at,
+      likes: post.likes || 0,
+      dislikes: post.dislikes || 0,
+      interaction: post.interaction, // Include the user's interaction with this post
+      groupId: groupId // Add the group ID
+    }));
+    
+    return NextResponse.json(frontendPosts);
   } catch (error) {
     console.error('Error fetching group posts:', error);
     return NextResponse.json({ error: 'Failed to fetch group posts' }, { status: 500 });

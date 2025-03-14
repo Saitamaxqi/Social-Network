@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { GlobeAltIcon, LockClosedIcon, UserGroupIcon } from '@heroicons/react/24/outline';
@@ -30,15 +30,15 @@ interface Post {
   comments?: Post[];
   post_id?: string;
   visibility?: string;
+  groupId?: string;
 }
 
 interface PostProps {
-  categoryId?: string;
+  groupId?: string;
 }
 
-export default function Post({ categoryId }: PostProps) {
+export default function Post({ groupId }: PostProps) {
   const [posts, setPosts] = useState<Post[]>([]);
-  const [filterCategories, setFilterCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
@@ -47,27 +47,13 @@ export default function Post({ categoryId }: PostProps) {
   const { user } = useAuth();
   const router = useRouter();
 
-  // Fetch categories
-  const fetchCategories = useCallback(async () => {
-    try {
-      const response = await fetch('/api/categories');
-      if (!response.ok) {
-        throw new Error('Failed to fetch categories');
-      }
-      const data = await response.json();
-      setFilterCategories(data);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    }
-  }, []);
+
 
   // Fetch posts
   const fetchPosts = useCallback(async () => {
     try {
       setLoading(true);
-      const url = categoryId 
-        ? `/api/posts?category=${categoryId}` 
-        : '/api/posts';
+      const url = groupId ? `/api/groups/${groupId}/posts` : '/api/posts';
       
       const response = await fetch(url);
       if (!response.ok) {
@@ -124,18 +110,9 @@ export default function Post({ categoryId }: PostProps) {
     } finally {
       setLoading(false);
     }
-  }, [categoryId]);
+  }, [groupId]);
 
-  // Handle category click
-  const handleCategoryClick = (id: string) => {
-    if (categoryId === id) {
-      // If clicking the currently selected category, remove the filter
-      router.push('/posts');
-    } else {
-      // Otherwise, filter by the selected category
-      router.push(`/posts?category=${id}`);
-    }
-  };
+
 
   // Handle post interaction (like/dislike)
   const handleInteraction = async (postId: string, type: 'like' | 'dislike') => {
@@ -372,9 +349,7 @@ export default function Post({ categoryId }: PostProps) {
     }
   };
 
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+
 
   useEffect(() => {
     fetchPosts();
@@ -431,8 +406,8 @@ export default function Post({ categoryId }: PostProps) {
   };
 
   // Helper function to determine media type
-  const getMediaType = (mediaUrl?: string) => {
-    if (!mediaUrl) return 'unknown';
+  const getMediaType = (mediaUrl?: string | null) => {
+    if (!mediaUrl || typeof mediaUrl !== 'string') return 'unknown';
     
     try {
       // Check if the URL contains an extension
@@ -467,8 +442,8 @@ export default function Post({ categoryId }: PostProps) {
   };
 
   // Format media URL for display
-  const formatMediaUrl = (mediaUrl?: string) => {
-    if (!mediaUrl) return '';
+  const formatMediaUrl = (mediaUrl?: string | null) => {
+    if (!mediaUrl || typeof mediaUrl !== 'string') return '';
     
     // If it's already an absolute URL, return it
     if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
@@ -526,30 +501,7 @@ export default function Post({ categoryId }: PostProps) {
           )}
         </div>
 
-        {/* Category filters */}
-        <div className="flex flex-col items-center mb-4 sm:mb-6">
-          {filterCategories.length === 0 ? (
-            <div className="text-center p-3 sm:p-4 bg-gray-800 rounded mb-3 sm:mb-4 w-full max-w-md">
-              <p className="text-white mb-1 sm:mb-2 text-sm sm:text-base">No categories available.</p>
-            </div>
-          ) : (
-            <div className="flex gap-1.5 sm:gap-2 mb-2 flex-wrap justify-center">
-              {filterCategories.map((category) => (
-                <button
-                  key={category.id}
-                  onClick={() => handleCategoryClick(category.id)}
-                  className={`px-2 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm ${
-                    categoryId === category.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 hover:bg-gray-300'
-                  }`}
-                >
-                  {category.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+
 
         {loading ? (
           <div className="flex justify-center items-center py-12">
@@ -595,30 +547,7 @@ export default function Post({ categoryId }: PostProps) {
 
       {/* Post listing */}
       <div className="space-y-4 sm:space-y-6">
-        {/* Category filters */}
-        <div className="flex flex-col items-center mb-4 sm:mb-6">
-          {filterCategories.length === 0 ? (
-            <div className="text-center p-3 sm:p-4 bg-gray-800 rounded mb-3 sm:mb-4 w-full max-w-md">
-              <p className="text-white mb-1 sm:mb-2 text-sm sm:text-base">No categories available.</p>
-            </div>
-          ) : (
-            <div className="flex gap-1.5 sm:gap-2 mb-2 flex-wrap justify-center">
-              {filterCategories.map((category) => (
-                <button
-                  key={category.id}
-                  onClick={() => handleCategoryClick(category.id)}
-                  className={`px-2 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm ${
-                    categoryId === category.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 hover:bg-gray-300'
-                  }`}
-                >
-                  {category.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+
 
         {/* Posts list */}
         <div className="flex flex-col gap-4 sm:gap-6 pb-8">

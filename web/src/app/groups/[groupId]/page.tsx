@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useGroup } from '@/contexts/GroupContext';
 import Link from 'next/link';
 import MainLayout from '@/components/Layout/MainLayout';
+import Post from '@/components/Post/Post';
 
 interface Group {
   id: number;
@@ -289,50 +290,8 @@ export default function GroupDetailPage() {
             
             {activeTab === 'posts' && (
               <div className="min-h-[400px]">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold text-white">Group Posts</h2>
-                  <Link 
-                    href={`/groups/${groupId}/posts/create`}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors text-sm"
-                  >
-                    Create Post
-                  </Link>
-                </div>
-                
-                {posts && posts.length > 0 ? (
-                  <div className="space-y-6">
-                    {posts.map((post) => (
-                      <div key={post.id} className="bg-gray-700 rounded-lg p-4 shadow">
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="font-medium text-white">{post.authorName}</div>
-                          <div className="text-xs text-gray-400">
-                            {new Date(post.createdAt).toLocaleString()}
-                          </div>
-                        </div>
-                        <p className="text-gray-200 mb-4">{post.content}</p>
-                        <div className="flex justify-between items-center text-sm">
-                          <Link 
-                            href={`/groups/${groupId}/posts/${post.id}`}
-                            className="text-blue-400 hover:text-blue-300"
-                          >
-                            {post.commentCount} comments
-                          </Link>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <h2 className="text-2xl font-medium text-white mb-4">No Posts Yet</h2>
-                    <p className="text-gray-300 mb-4">Be the first to share something with the group!</p>
-                    <Link 
-                      href={`/groups/${groupId}/posts/create`}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-                    >
-                      Create the first post
-                    </Link>
-                  </div>
-                )}
+                {/*use post */}
+                <Post groupId={typeof groupId === 'string' ? groupId : undefined} />
               </div>
             )}
             

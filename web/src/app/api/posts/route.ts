@@ -23,6 +23,10 @@ interface BackendPost {
     name: string;
   }>;
   interaction?: number; // User's interaction with this post
+  group_id?: {
+    Int64: number;
+    Valid: boolean;
+  };
 }
 
 // Define the frontend post structure
@@ -43,6 +47,7 @@ interface FrontendPost {
   likes: number;
   dislikes: number;
   interaction?: number; // User's interaction with this post
+  groupId?: string; // Group ID if the post belongs to a group
 }
 
 export async function GET(request: NextRequest) {
@@ -88,7 +93,8 @@ export async function GET(request: NextRequest) {
       created_at: post.created_at,
       likes: post.likes || 0,
       dislikes: post.dislikes || 0,
-      interaction: post.interaction // Include the user's interaction with this post
+      interaction: post.interaction, // Include the user's interaction with this post
+      groupId: post.group_id && post.group_id.Valid ? String(post.group_id.Int64) : undefined
     }));
     
     return NextResponse.json(frontendPosts);
