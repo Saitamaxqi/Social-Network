@@ -177,7 +177,7 @@ func (g *Group) Delete() error {
 	_, err := DB.Exec(query, g.ID)
 	return err
 }
-
+//make it return all the model fields
 func (g *Group) Refresh() error {
 	query := `SELECT id, title, description, creator_id, created_at, updated_at FROM groups WHERE id = ?`
 	return DB.QueryRow(query, g.ID).Scan(&g.ID, &g.Title, &g.Description, &g.CreatorID, &g.CreatedAt, &g.UpdatedAt)
@@ -195,6 +195,27 @@ func (gm *GroupMember) Index() ([]Model, error) {
 	var members []Model
 	rows, err := DB.Query(`SELECT id, group_id, user_id, status, created_at, updated_at 
 		FROM group_members`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var member GroupMember
+		err = rows.Scan(&member.ID, &member.GroupID, &member.UserID, &member.Status,
+			&member.CreatedAt, &member.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		members = append(members, &member)
+	}
+	return members, nil
+}
+
+func (g *Group) GetMembers() ([]*GroupMember, error) {
+	var members []*GroupMember
+	rows, err := DB.Query(`SELECT id, group_id, user_id, status, created_at, updated_at 
+		FROM group_members WHERE group_id = ? AND status = 'member'`, g.ID)
 	if err != nil {
 		return nil, err
 	}

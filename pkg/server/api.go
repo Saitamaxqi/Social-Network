@@ -74,8 +74,8 @@ func RegisterAPIs() {
 
     // Group events routes
     GET("/groups/{id}/events", controllers.GetGroupEvents, requests.DefaultRequest, middlewares.AuthMiddleware)         // Get group events
-    POST("/groups/{id}/events", controllers.CreateGroupEvent, requests.GroupEventRequest, middlewares.AuthMiddleware)    // Create group event
-    POST("/groups/{id}/events/{event_id}/respond", controllers.RespondToEvent, requests.GroupEventResponseRequest, middlewares.AuthMiddleware)  // Respond to event
+    POST("/groups/{id}/events", controllers.CreateGroupEvent, requests.DefaultRequest, middlewares.AuthMiddleware)    // Create group event
+    POST("/groups/{id}/events/{event_id}/respond", controllers.RespondToEvent, requests.DefaultRequest, middlewares.AuthMiddleware)  // Respond to event
 
     // Group messages routes
     GET("/groups/{id}/messages", controllers.GetGroupMessages, requests.DefaultRequest, middlewares.AuthMiddleware)     // Get group messages

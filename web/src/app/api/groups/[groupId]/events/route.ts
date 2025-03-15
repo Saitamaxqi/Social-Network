@@ -10,7 +10,8 @@ export async function GET(
   { params }: { params: { groupId: string } }
 ) {
   try {
-    const { groupId } = params;
+    // Ensure params is properly awaited
+    const groupId = params.groupId;
     
     // Get auth cookie from the request
     const authCookie = request.cookies.get('session')?.value || request.cookies.get('session_token')?.value;
@@ -59,7 +60,8 @@ export async function POST(
   { params }: { params: { groupId: string } }
 ) {
   try {
-    const { groupId } = params;
+    // Ensure params is properly awaited
+    const groupId = params.groupId;
     
     // Get auth cookie from the request
     const authCookie = request.cookies.get('session')?.value || request.cookies.get('session_token')?.value;
@@ -71,29 +73,33 @@ export async function POST(
     
     // Get request body
     const body = await request.json();
-    const { title, description, date, location } = body;
+    const { title, description, date_time, creator_id } = body;
     
     if (!title) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
     
-    if (!date) {
-      return NextResponse.json({ error: 'Date is required' }, { status: 400 });
+    if (!date_time) {
+      return NextResponse.json({ error: 'Date and time are required' }, { status: 400 });
     }
     
     // Forward the request to the backend API
     const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/groups/${groupId}/events`;
     console.log(`Creating event at backend URL: ${backendUrl}`);
     
-    const formData = new FormData();
-    formData.append('title', title);
-    if (description) {
-      formData.append('description', description);
-    }
-    formData.append('date', date);
-    if (location) {
-      formData.append('location', location);
-    }
+    // Convert the request to JSON format
+    // Ensure date_time is properly formatted as an ISO string
+    const dateTimeObj = new Date(date_time);
+    
+    const eventData = {
+      title,
+      description: description || '',
+      date_time: dateTimeObj.toISOString(), // Ensure proper ISO format
+      group_id: parseInt(groupId, 10),
+      creator_id: parseInt(creator_id, 10)
+    };
+    
+    console.log('Sending event data:', eventData);
     
     const response = await fetch(
       backendUrl,
@@ -101,8 +107,9 @@ export async function POST(
         method: 'POST',
         headers: {
           'Cookie': `session=${authCookie}`,
+          'Content-Type': 'application/json'
         },
-        body: formData,
+        body: JSON.stringify(eventData),
         credentials: 'include',
       }
     );

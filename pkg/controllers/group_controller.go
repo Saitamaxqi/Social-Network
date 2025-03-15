@@ -274,14 +274,13 @@ func InviteToGroup(w http.ResponseWriter, r *http.Request) {
 	if err := notification.Create(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}	
-
+	}
 	err = notification.Refresh()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	hub.SendToUser(invited_user_id, map[string]interface{}{
 		"type":         "notification",
 		"notification": notification,
@@ -729,6 +728,46 @@ func CreateGroupEvent(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	//get group
+	group := &models.Group{ID: event.GroupID}
+	if err := group.Refresh(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	members, err := group.GetMembers()
+	
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// Notify all group members about the new event except the creator
+	for _, member := range members {
+		if member.UserID == user.ID {
+			continue
+		}
+
+		notification := &models.Notification{
+			UserID:   member.UserID,
+			Text:     "New event in group " + group.Title + " named " + event.Title,
+			SenderID: user.ID,
+			Type:     "group_event",
+			LinkID:   event.ID,
+			Date:     time.Now(),
+		}
+		if err := notification.Create(); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		err = notification.Refresh()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		hub.SendToUser(member.UserID, map[string]interface{}{
+			"type":         "notification",
+			"notification": notification,
+		})
+	}
 
 	RespondWithJSON(w, http.StatusOK, event)
 }
@@ -814,9 +853,9 @@ func GetGroupEvents(w http.ResponseWriter, r *http.Request) {
             ge.created_at, ge.updated_at, u.username,
             (SELECT COUNT(*) FROM group_event_responses WHERE event_id = ge.id AND response = 'going') as going_count
         FROM group_events ge
-        JOIN users u ON ge.user_id = u.id
+        JOIN users u ON ge.creator_id = u.id
         WHERE ge.group_id = ?
-        ORDER BY ge.date ASC
+        ORDER BY ge.date_time ASC
     `, groupID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -837,11 +876,25 @@ func GetGroupEvents(w http.ResponseWriter, r *http.Request) {
 		}
 		event.Creator = &models.User{Username: username}
 
-		// Get user's response to this event
-		var response models.GroupEventResponse
-		err = models.DB.QueryRow("SELECT id, response FROM group_event_responses WHERE event_id = ? AND user_id = ?",
-			event.ID, user.ID).Scan(&response.ID, &response.Response)
-		if err == nil {
+		// Get ALL responses for this event
+		responseRows, err := models.DB.Query(`
+			SELECT ger.id, ger.event_id, ger.user_id, ger.response, ger.created_at, ger.updated_at 
+			FROM group_event_responses ger 
+			WHERE ger.event_id = ?
+		`, event.ID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer responseRows.Close()
+
+		for responseRows.Next() {
+			var response models.GroupEventResponse
+			err = responseRows.Scan(&response.ID, &response.EventID, &response.UserID, &response.Response, &response.CreatedAt, &response.UpdatedAt)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 			event.Responses = append(event.Responses, &response)
 		}
 
@@ -858,9 +911,23 @@ func RespondToEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := r.Context().Value("user").(*models.User)
-	if user == nil {
+	user, err := AuthUser(r)
+	if user == nil || err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Extract eventId from URL path
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 5 {
+		http.Error(w, "Invalid URL path", http.StatusBadRequest)
+		return
+	}
+
+	eventIdStr := parts[len(parts)-2] // Format: /groups/{groupId}/events/{eventId}/respond
+	eventId, err := strconv.Atoi(eventIdStr)
+	if err != nil {
+		http.Error(w, "Invalid event ID", http.StatusBadRequest)
 		return
 	}
 
@@ -870,10 +937,14 @@ func RespondToEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Set the EventID from the URL parameter
+	response.EventID = eventId
+
 	// Verify user is a member of the group
 	var groupID int
-	err := models.DB.QueryRow("SELECT group_id FROM group_events WHERE id = ?", response.EventID).Scan(&groupID)
+	err = models.DB.QueryRow("SELECT group_id FROM group_events WHERE id = ?", response.EventID).Scan(&groupID)
 	if err != nil {
+		fmt.Println(904)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -882,6 +953,7 @@ func RespondToEvent(w http.ResponseWriter, r *http.Request) {
 	err = models.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM group_members WHERE group_id = ? AND user_id = ? AND status = 'member')",
 		groupID, user.ID).Scan(&isMember)
 	if err != nil {
+		fmt.Println(903)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -889,11 +961,27 @@ func RespondToEvent(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Only group members can respond to events", http.StatusForbidden)
 		return
 	}
-
-	response.UserID = user.ID
-	if err := response.Create(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	//check if user already has response
+	var existingResponse models.GroupEventResponse
+	err = models.DB.QueryRow("SELECT id, response FROM group_event_responses WHERE event_id = ? AND user_id = ?",
+		response.EventID, user.ID).Scan(&existingResponse.ID, &existingResponse.Response)
+	if err == nil {
+		//update his response
+		_, err = models.DB.Exec("UPDATE group_event_responses SET response = ? WHERE event_id = ? AND user_id = ?",
+			response.Response, response.EventID, user.ID)
+		if err != nil {
+			fmt.Println(901)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		//create new response
+		response.UserID = user.ID
+		if err := response.Create(); err != nil {
+			fmt.Println(902)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	RespondWithJSON(w, http.StatusOK, response)

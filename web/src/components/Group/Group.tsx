@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useGroup } from '@/contexts/GroupContext';
 import Link from 'next/link';
 import Post from '../Post/Post';
+import Events from './Events';
 
 
 // interface Group {
@@ -349,9 +350,11 @@ export default function Group() {
             </div>
           )}
           
-          {/* {activeTab === 'events' && (
-             <Events groupId={typeof groupId === 'string' ? groupId : undefined} />
-          )} */}
+          {activeTab === 'events' && (
+            <div className="min-h-[400px]">
+              <Events groupId={typeof groupId === 'string' ? groupId : undefined} />
+            </div>
+          )}
         </>
       )}
     </div>
