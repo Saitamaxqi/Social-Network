@@ -400,26 +400,40 @@ func RespondToInvitation(w http.ResponseWriter, r *http.Request) {
 
 // RequestToJoinGroup handles requests to join a group
 func RequestToJoinGroup(w http.ResponseWriter, r *http.Request) {
+	//add error fmtprintln for all errors 500
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	user := r.Context().Value("user").(*models.User)
-	if user == nil {
+	currentUser, err := AuthUser(r)
+	if currentUser == nil || err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	groupID, err := strconv.Atoi(r.URL.Query().Get("group_id"))
+	groupID, err := strconv.Atoi(r.FormValue("group_id"))
 	if err != nil {
 		http.Error(w, "Invalid group ID", http.StatusBadRequest)
 		return
 	}
 
+		//check if user is already a member
+		var isMember bool
+		err = models.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM group_members WHERE group_id = ? AND user_id = ?)",
+			groupID, currentUser.ID).Scan(&isMember)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if isMember {
+			http.Error(w, "You are already a member of this group", http.StatusBadRequest)
+			return
+		}
+
 	member := &models.GroupMember{
 		GroupID: groupID,
-		UserID:  user.ID,
+		UserID:  currentUser.ID,
 		Status:  "requested",
 	}
 	if err := member.Create(); err != nil {
@@ -427,19 +441,21 @@ func RequestToJoinGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get group creator
-	var creatorID int
-	err = models.DB.QueryRow("SELECT creator_id FROM groups WHERE id = ?", groupID).Scan(&creatorID)
+	// Get group
+	var group models.Group
+	err = models.DB.QueryRow("SELECT id, title, description, creator_id, created_at, updated_at FROM groups WHERE id = ?", groupID).Scan(
+		&group.ID, &group.Title, &group.Description, &group.CreatorID, &group.CreatedAt, &group.UpdatedAt)
 	if err != nil {
+		fmt.Println("Error fetching group:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// Notify group creator
 	notification := &models.Notification{
-		UserID:   creatorID,
-		Text:     "A user has requested to join your group",
-		SenderID: user.ID,
+		UserID:   group.CreatorID,
+		Text:     "A user has requested to join your group "+group.Title,
+		SenderID: currentUser.ID,
 		Type:     "group_request",
 		LinkID:   groupID,
 		Date:     time.Now(),
@@ -448,6 +464,16 @@ func RequestToJoinGroup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	err = notification.Refresh()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	hub.SendToUser(group.CreatorID, map[string]interface{}{
+		"type":         "notification",
+		"notification": notification,
+	})
 
 	RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Success"})
 }
@@ -459,64 +485,92 @@ func RespondToJoinRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := r.Context().Value("user").(*models.User)
-	if user == nil {
+	user, err := AuthUser(r)
+	if user == nil || err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	var response struct {
-		GroupID int  `json:"group_id"`
-		UserID  int  `json:"user_id"`
-		Accept  bool `json:"accept"`
+	// Parse form data
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Error parsing form data: "+err.Error(), http.StatusBadRequest)
+		return
 	}
-	if err := json.NewDecoder(r.Body).Decode(&response); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+
+	// Extract values from form data
+	userIDStr := r.FormValue("user_id")
+	groupIDStr := r.FormValue("group_id")
+	status := r.FormValue("status")
+
+	// Convert string IDs to integers
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		http.Error(w, "Invalid user ID: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	groupID, err := strconv.Atoi(groupIDStr)
+	if err != nil {
+		http.Error(w, "Invalid group ID: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Verify the responder is the group creator
-	var isCreator bool
-	err := models.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM groups WHERE id = ? AND creator_id = ?)",
-		response.GroupID, user.ID).Scan(&isCreator)
+	var group models.Group
+	err = models.DB.QueryRow("SELECT id, title, description, creator_id, created_at, updated_at FROM groups WHERE id = ?", groupID).Scan(
+		&group.ID, &group.Title, &group.Description, &group.CreatorID, &group.CreatedAt, &group.UpdatedAt)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if !isCreator {
+	if group.CreatorID != user.ID {
 		http.Error(w, "Only the group creator can respond to join requests", http.StatusForbidden)
 		return
 	}
 
-	if response.Accept {
+	// Process the request based on status
+	if status == "accepted" {
 		_, err := models.DB.Exec("UPDATE group_members SET status = 'member' WHERE group_id = ? AND user_id = ? AND status = 'requested'",
-			response.GroupID, response.UserID)
+			groupID, userID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else if status == "declined" {
+		_, err := models.DB.Exec("DELETE FROM group_members WHERE group_id = ? AND user_id = ? AND status = 'requested'",
+			groupID, userID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	} else {
-		_, err := models.DB.Exec("DELETE FROM group_members WHERE group_id = ? AND user_id = ? AND status = 'requested'",
-			response.GroupID, response.UserID)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		http.Error(w, "Invalid status value. Must be 'accepted' or 'declined'", http.StatusBadRequest)
+		return
 	}
 
 	// Notify the requesting user of the decision
 	notification := &models.Notification{
-		UserID:   response.UserID,
-		Text:     "Your group join request has been " + map[bool]string{true: "accepted", false: "rejected"}[response.Accept],
+		UserID:   userID,
+		Text:     "Your join request to group " + group.Title + " has been " + status,
 		SenderID: user.ID,
 		Type:     "group_request_response",
-		LinkID:   response.GroupID,
+		LinkID:   groupID,
 		Date:     time.Now(),
 	}
 	if err := notification.Create(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	err = notification.Refresh()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	hub.SendToUser(userID, map[string]interface{}{
+		"type":         "notification",
+		"notification": notification,
+	})
 
 	RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Success"})
 }

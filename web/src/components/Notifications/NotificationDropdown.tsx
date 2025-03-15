@@ -130,6 +130,44 @@ export default function NotificationDropdown() {
     }
   };
 
+  const handleGroupRequestAction = async (notification: any, status: 'accepted' | 'declined', e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    try {
+      const formData = new FormData();
+      formData.append('status', status);
+      formData.append('user_id', notification.sender_id.toString());
+      
+      const response = await fetch(`/api/groups/${notification.link_id}/respond-request`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Failed to respond to group join request');
+      
+      if (notification) {
+        // Delete notification from database
+        const deleteResponse = await fetch(`/api/notifications/${notification.id}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+
+        if (!deleteResponse.ok) {
+          throw new Error('Failed to delete notification');
+        }
+
+        // Update notifications in context to remove this one
+        const updatedNotifications = notifications.filter(n => n.id !== notification.id);
+        setNotifications(updatedNotifications);
+        if (unreadCount > 0) setUnreadCount(unreadCount - 1);
+      }
+    } catch (error) {
+      console.error('Error responding to group join request:', error);
+    }
+  };
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'post':
@@ -140,6 +178,8 @@ export default function NotificationDropdown() {
       case 'follow request':
         return '👥';
       case 'group_invitation':
+        return '👥';
+      case 'group_request':
         return '👥';
       default:
         return '🔔';
@@ -155,6 +195,8 @@ export default function NotificationDropdown() {
       case 'follow':
         return `/profile/${linkId}`;
       case 'group_invitation':
+        return `/groups/${linkId}`;
+      case 'group_request':
         return `/groups/${linkId}`;
       default:
         return '#';
@@ -236,6 +278,22 @@ export default function NotificationDropdown() {
                           </button>
                           <button
                             onClick={(e) => handleGroupInvitationAction(notification, 'declined', e)}
+                            className="px-3 py-1 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors duration-200"
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      )}
+                      {notification.type === 'group_request' && (
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            onClick={(e) => handleGroupRequestAction(notification, 'accepted', e)}
+                            className="px-3 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors duration-200"
+                          >
+                            Accept
+                          </button>
+                          <button
+                            onClick={(e) => handleGroupRequestAction(notification, 'declined', e)}
                             className="px-3 py-1 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors duration-200"
                           >
                             Decline

@@ -150,9 +150,15 @@ export default function Group() {
 
   const handleJoinRequest = async () => {
     try {
-      const response = await fetch(`/api/groups/${groupId}`, {
+      // The groupId is now extracted from the URL parameters in the API route
+      // No need to include it in the request body
+      const response = await fetch(`/api/groups/${groupId}/join`, {
         method: 'POST',
         credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+        // No body needed as the groupId is in the URL
       });
       
       if (!response.ok) {
