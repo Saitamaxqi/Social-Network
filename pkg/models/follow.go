@@ -183,8 +183,9 @@ func (f *Follow) GetFollowers(userID int) ([]*User, error) {
 // Add these methods to your existing User struct
 
 func (u *User) GetFollowers() ([]*User, error) {
+	// Use a simpler query that only selects essential fields
 	rows, err := DB.Query(`
-        SELECT u.* FROM users u 
+        SELECT u.id, u.username, u.avatar FROM users u 
         JOIN follows f ON u.id = f.follower_id 
         WHERE f.following_id = ? AND f.status = 'accepted'`, u.ID)
 	if err != nil {
@@ -195,22 +196,20 @@ func (u *User) GetFollowers() ([]*User, error) {
 	var followers []*User
 	for rows.Next() {
 		follower := &User{}
-		err = rows.Scan(&follower.ID, &follower.Username, &follower.Age, &follower.Gender,
-			&follower.FirstName, &follower.LastName, &follower.Email, &follower.Password,
-			&follower.Type, &follower.Requested, &follower.Avatar, &follower.ProfileType,
-			&follower.AboutMe, &follower.CreatedAt, &follower.UpdatedAt)
+		// Only scan the fields we selected
+		err = rows.Scan(&follower.ID, &follower.Username, &follower.Avatar)
 		if err != nil {
 			return nil, err
 		}
-		follower.HideDetails()
 		followers = append(followers, follower)
 	}
 	return followers, nil
 }
 
 func (u *User) GetFollowing() ([]*User, error) {
+	// Use a simpler query that only selects essential fields
 	rows, err := DB.Query(`
-        SELECT u.* FROM users u 
+        SELECT u.id, u.username, u.avatar FROM users u 
         JOIN follows f ON u.id = f.following_id 
         WHERE f.follower_id = ? AND f.status = 'accepted'`, u.ID)
 	if err != nil {
@@ -221,15 +220,11 @@ func (u *User) GetFollowing() ([]*User, error) {
 	var following []*User
 	for rows.Next() {
 		followedUser := &User{}
-		err = rows.Scan(&followedUser.ID, &followedUser.Username, &followedUser.Age,
-			&followedUser.Gender, &followedUser.FirstName, &followedUser.LastName,
-			&followedUser.Email, &followedUser.Password, &followedUser.Type,
-			&followedUser.Requested, &followedUser.Avatar, &followedUser.ProfileType,
-			&followedUser.AboutMe, &followedUser.CreatedAt, &followedUser.UpdatedAt)
+		// Only scan the fields we selected
+		err = rows.Scan(&followedUser.ID, &followedUser.Username, &followedUser.Avatar)
 		if err != nil {
 			return nil, err
 		}
-		followedUser.HideDetails()
 		following = append(following, followedUser)
 	}
 	return following, nil
