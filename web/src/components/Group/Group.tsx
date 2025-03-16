@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGroup } from '@/contexts/GroupContext';
 import Link from 'next/link';
 import Post from '../Post/Post';
 import Events from './Events';
+import ChatInterface from '../Chat/ChatInterface';
 
 
 // interface Group {
@@ -333,13 +334,12 @@ export default function Group() {
       ) : (
         <>
           {activeTab === 'chat' && (
-            <div className="min-h-[400px]">
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-medium text-white mb-4">Group Chat Coming Soon</h2>
-                <p className="text-gray-300">
-                  This feature is currently under development. Check back soon!
-                </p>
-              </div>
+            <div className="chat-tab-container" style={{ 
+              minHeight: '500px',
+              height: 'calc(100vh - 350px)',
+              overflow: 'hidden'
+            }}>
+              <ChatInterface />
             </div>
           )}
           

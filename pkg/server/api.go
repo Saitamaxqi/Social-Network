@@ -79,7 +79,7 @@ func RegisterAPIs() {
 
     // Group messages routes
     GET("/groups/{id}/messages", controllers.GetGroupMessages, requests.DefaultRequest, middlewares.AuthMiddleware)     // Get group messages
-    POST("/groups/{id}/messages", controllers.SendGroupMessage, requests.GroupMessageRequest, middlewares.AuthMiddleware)  // Send group message
+    POST("/groups/{id}/messages", controllers.SendGroupMessage, requests.DefaultRequest, middlewares.AuthMiddleware)  // Send group message
     GET("/logout", controllers.AuthController, requests.DefaultRequest, middlewares.AuthMiddleware)           // Logout
     // Third party routes (Skip)
     WEB("/login/google", controllers.ThirdPartyController, requests.DefaultRequest, middlewares.DefaultAPIMiddleware)    // Google auth
