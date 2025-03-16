@@ -111,14 +111,15 @@ const ChatInterface: React.FC = () => {
    */
   useEffect(() => {
     const fetchMessages = async () => {
-      if (!selectedUser) {
+      if (!userIdParam) {
         setMessages([]);
         return;
       }
 
       try {
         setLoadingMessages(true);
-        const response = await fetch(`/api/chats/${selectedUser.id}?page=${page}`, {
+        const userId = parseInt(userIdParam);
+        const response = await fetch(`/api/chats/${userId}?page=${page}`, {
           credentials: 'include' // Include cookies in the request
         });
         
@@ -128,8 +129,15 @@ const ChatInterface: React.FC = () => {
         
         const data = await response.json();
         
+        // Set the selected user from the response
+        if (data.recipient && page === 0) {
+          setSelectedUser(data.recipient);
+        }
+        
+        const messagesArray = data.messages || [];
+        
         // If there are no new messages or fewer than the page size, we've reached the end
-        if (data.length === 0 || data.length < 10) {
+        if (messagesArray.length === 0 || messagesArray.length < 10) {
           setHasMoreMessages(false);
         }
         
@@ -137,10 +145,9 @@ const ChatInterface: React.FC = () => {
         // Filter out any duplicate messages that might already exist in the current messages array
         setMessages(prev => {
           const existingMessageIds = new Set(prev.map(msg => msg.id));
-          const newMessages = data.filter((msg : Message) => !existingMessageIds.has(msg.id));
+          const newMessages = messagesArray.filter((msg : Message) => !existingMessageIds.has(msg.id));
           return [...newMessages, ...prev];
         });
-        setLoadingMessages(false);
         
         // If this is the first page (initial load), scroll to bottom
         if (page === 0) {
@@ -152,18 +159,13 @@ const ChatInterface: React.FC = () => {
         }
       } catch (error) {
         console.error('Error fetching messages:', error);
+      } finally {
         setLoadingMessages(false);
       }
     };
 
-    // Reset messages when changing users
-    if (selectedUser && page === 0) {
-      setMessages([]);
-      setHasMoreMessages(true);
-    }
-
     fetchMessages();
-  }, [selectedUser, page]);
+  }, [userIdParam, page]);
 
   /**
    * Scroll to bottom when messages change, except when loading older messages
@@ -220,10 +222,13 @@ const ChatInterface: React.FC = () => {
   }, [socket, selectedUser, currentUser]);
 
   /**
-   * Fetch user details when userId changes in URL
+   * Update state when userId changes in URL
    */
   useEffect(() => {
-    if (!userIdParam) return;
+    if (!userIdParam) {
+      setSelectedUser(null);
+      return;
+    }
     
     const userId = parseInt(userIdParam);
     if (isNaN(userId)) return;
@@ -234,23 +239,8 @@ const ChatInterface: React.FC = () => {
     // Reset messages when changing users
     setMessages([]);
     
-    // Fetch user details and set as selected user
-    const fetchUserDetails = async () => {
-      try {
-        // Use the profile endpoint instead of users endpoint which requires admin privileges
-        const response = await fetch(`/api/profile/${userId}`, {
-          credentials: 'include' // Include cookies in the request
-        });
-        if (response.ok) {
-          const user = await response.json();
-          setSelectedUser(user);
-        }
-      } catch (error) {
-        console.error('Error fetching user details:', error);
-      }
-    };
-
-    fetchUserDetails();
+    // We'll get the selected user from the messages response
+    // in the fetchMessages function instead of making a separate API call
   }, [userIdParam]);
 
   /**

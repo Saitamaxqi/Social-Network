@@ -135,12 +135,12 @@ func GetPrivateMessagesController(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid recipient ID", http.StatusBadRequest)
 		return
 	}
-	// recipient := &models.User{ID: recipientID}
-	// err = recipient.Refresh()
-	// if err != nil {
-	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
+	recipient := &models.User{ID: recipientID}
+	err = recipient.Refresh()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	
 	page, err := strconv.Atoi(r.URL.Query().Get("page"))
 	if err != nil {
@@ -151,9 +151,9 @@ func GetPrivateMessagesController(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	// response := map[string]interface{}{
-	// 	"messages": messages,
-	// 	"recipient": recipient,
-	// }
-	RespondWithJSON(w, http.StatusOK, messages)
+	response := map[string]interface{}{
+		"messages": messages,
+		"recipient": recipient,
+	}
+	RespondWithJSON(w, http.StatusOK, response)
 }

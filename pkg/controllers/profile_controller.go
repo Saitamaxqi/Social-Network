@@ -33,17 +33,17 @@ func GetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check visibility
-	// visible, err := profileUser.IsProfileVisibleTo(currentUser.ID)
-	// if err != nil {
-	//     http.Error(w, err.Error(), http.StatusInternalServerError)
-	//     return
-	// }
+	//Check visibility
+	visible, err := profileUser.IsProfileVisibleTo(currentUser.ID)
+	if err != nil {
+	    http.Error(w, err.Error(), http.StatusInternalServerError)
+	    return
+	}
 
-	// if !visible {
-	//     http.Error(w, "Profile is private", http.StatusForbidden)
-	//     return
-	// }
+	if !visible {
+	    http.Error(w, "Profile is private", http.StatusForbidden)
+	    return
+	}
 
 	// Get user activity
 	activity, err := profileUser.GetActivity()
