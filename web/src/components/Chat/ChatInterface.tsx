@@ -13,24 +13,31 @@ import './Chat.css';
  * @property {number} id - Unique identifier for the message
  * @property {string} content - The text content of the message
  * @property {number} sender_id - ID of the user who sent the message
- * @property {number} recipient_id - ID of the user who received the message
+ * @property {number} recipient_id - ID of the user who received the message (for direct messages)
+ * @property {number} group_id - ID of the group (for group messages)
  * @property {string} created_at - ISO timestamp when the message was sent
  * @property {object} sender - User object representing the sender
- * @property {object} recipient - User object representing the recipient
+ * @property {object} recipient - User object representing the recipient (for direct messages)
+ * @property {object} group - Group object representing the group (for group messages)
  */
 interface Message {
   id: number;
   content: string;
   sender_id: number;
-  recipient_id: number;
+  recipient_id?: number;
+  group_id?: number;
   created_at: string;
   sender: {
     id: number;
     username: string;
   };
-  recipient: {
+  recipient?: {
     id: number;
     username: string;
+  };
+  group?: {
+    id: number;
+    title: string;
   };
 }
 
@@ -42,6 +49,21 @@ interface Message {
 interface User {
   id: number;
   username: string;
+}
+
+/**
+ * Group interface representing the structure of a group object
+ * @property {number} id - Unique identifier for the group
+ * @property {string} title - Name of the group
+ * @property {string} description - Description of the group
+ */
+interface Group {
+  id: number;
+  title: string;
+  description?: string;
+  creator_id?: number;
+  created_at?: string;
+  members?: Array<{id: number, username: string}>;
 }
 
 /**
@@ -63,9 +85,19 @@ interface User {
 const ChatInterface: React.FC = () => {
   const searchParams = useSearchParams();
   const userIdParam = searchParams.get('userId');
+  const url = window.location.pathname;
+  //if were in group
+  let groupIdParam = null;
+  if(url.includes('groups')){
+    groupIdParam = url.split('/').pop();
+  }
   const { socket } = useWebSocket();
-  // State for storing the currently selected user
+  // Chat type: 'direct' or 'group'
+  const [chatType, setChatType] = useState<'direct' | 'group'>('direct');
+  // State for storing the currently selected user (for direct messages)
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  // State for storing the currently selected group (for group chats)
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   // State for tracking which users are online
   const [onlineUsers, setOnlineUsers] = useState<Record<string, boolean>>({});
   // State for storing messages in the current chat
@@ -90,7 +122,7 @@ const ChatInterface: React.FC = () => {
     const fetchCurrentUser = async () => {
       try {
         // Use the correct endpoint as defined in the backend
-        const response = await fetch('/api/login-session', {
+        const response = await fetch('/api/auth/session', {
           credentials: 'include' // Include cookies in the request
         });
         if (response.ok) {
@@ -106,19 +138,32 @@ const ChatInterface: React.FC = () => {
   }, []);
 
   /**
-   * Fetches chat messages when a user is selected
+   * Fetches chat messages based on chat type
    * Loads messages in pages for pagination
    */
   useEffect(() => {
     const fetchMessages = async () => {
-      if (!selectedUser) {
+      if (!userIdParam && !groupIdParam) {
         setMessages([]);
         return;
       }
 
       try {
         setLoadingMessages(true);
-        const response = await fetch(`/api/chats/${selectedUser.id}?page=${page}`, {
+        let url = '';
+        
+        // Determine which API endpoint to use based on chat type
+        if (chatType === 'direct' && userIdParam) {
+          const userId = parseInt(userIdParam);
+          url = `/api/chats/${userId}?page=${page}`;
+        } else if (chatType === 'group' && groupIdParam) {
+          const groupId = parseInt(groupIdParam);
+          url = `/api/groups/${groupId}/messages?page=${page}`;
+        } else {
+          return;
+        }
+        
+        const response = await fetch(url, {
           credentials: 'include' // Include cookies in the request
         });
         
@@ -128,8 +173,20 @@ const ChatInterface: React.FC = () => {
         
         const data = await response.json();
         
+        // Set the selected user or group from the response
+        if (page === 0) {
+          if (chatType === 'direct' && data.recipient) {
+            setSelectedUser(data.recipient);
+          } else if (chatType === 'group' && data.group) {
+            // The backend now includes group info in the response
+            setSelectedGroup(data.group);
+          }
+        }
+        
+        const messagesArray = data.messages || [];
+        
         // If there are no new messages or fewer than the page size, we've reached the end
-        if (data.length === 0 || data.length < 10) {
+        if (messagesArray.length === 0 || messagesArray.length < 10) {
           setHasMoreMessages(false);
         }
         
@@ -137,10 +194,9 @@ const ChatInterface: React.FC = () => {
         // Filter out any duplicate messages that might already exist in the current messages array
         setMessages(prev => {
           const existingMessageIds = new Set(prev.map(msg => msg.id));
-          const newMessages = data.filter((msg : Message) => !existingMessageIds.has(msg.id));
+          const newMessages = messagesArray.filter((msg : Message) => !existingMessageIds.has(msg.id));
           return [...newMessages, ...prev];
         });
-        setLoadingMessages(false);
         
         // If this is the first page (initial load), scroll to bottom
         if (page === 0) {
@@ -152,18 +208,13 @@ const ChatInterface: React.FC = () => {
         }
       } catch (error) {
         console.error('Error fetching messages:', error);
+      } finally {
         setLoadingMessages(false);
       }
     };
 
-    // Reset messages when changing users
-    if (selectedUser && page === 0) {
-      setMessages([]);
-      setHasMoreMessages(true);
-    }
-
     fetchMessages();
-  }, [selectedUser, page]);
+  }, [userIdParam, groupIdParam, chatType, page]);
 
   /**
    * Scroll to bottom when messages change, except when loading older messages
@@ -193,20 +244,39 @@ const ChatInterface: React.FC = () => {
           id: Date.now(), // Temporary ID for new messages
           content: data.message.content,
           sender_id: data.message.sender.id,
-          recipient_id: currentUser.id,
           created_at: data.message.created_at,
           sender: {
             id: data.message.sender.id,
             username: data.message.sender.username
-          },
-          recipient: {
-            id: currentUser.id,
-            username: currentUser.username
           }
         };
 
-        // Only add message if it's from the currently selected user
-        if (selectedUser && (newMessage.sender_id === selectedUser.id)) {
+        // Add recipient_id for direct messages
+        if (data.message.recipient_id) {
+          newMessage.recipient_id = data.message.recipient_id;
+          newMessage.recipient = {
+            id: data.message.recipient_id,
+            username: data.message.recipient?.username || ''
+          };
+        }
+        
+        // Add group_id for group messages
+        if (data.message.group_id) {
+          newMessage.group_id = data.message.group_id;
+          newMessage.group = {
+            id: data.message.group_id,
+            title: data.message.group?.title || ''
+          };
+        }
+
+        // Add message if it's for the current chat
+        if (
+          (chatType === 'direct' && selectedUser && 
+            ((newMessage.sender_id === selectedUser.id && newMessage.recipient_id === currentUser.id) || 
+             (newMessage.sender_id === currentUser.id && newMessage.recipient_id === selectedUser.id)))
+          ||
+          (chatType === 'group' && selectedGroup && newMessage.group_id === selectedGroup.id)
+        ) {
           setMessages(prev => [...prev, newMessage]);
         }
       }
@@ -220,38 +290,40 @@ const ChatInterface: React.FC = () => {
   }, [socket, selectedUser, currentUser]);
 
   /**
-   * Fetch user details when userId changes in URL
+   * Determine chat type and update state when URL parameters change
    */
   useEffect(() => {
-    if (!userIdParam) return;
-    
-    const userId = parseInt(userIdParam);
-    if (isNaN(userId)) return;
-    
-    // Reset pagination when changing users
+    // Reset states when changing chats
     setPage(0);
     setHasMoreMessages(true);
-    // Reset messages when changing users
     setMessages([]);
     
-    // Fetch user details and set as selected user
-    const fetchUserDetails = async () => {
-      try {
-        // Use the profile endpoint instead of users endpoint which requires admin privileges
-        const response = await fetch(`/api/profile/${userId}`, {
-          credentials: 'include' // Include cookies in the request
-        });
-        if (response.ok) {
-          const user = await response.json();
-          setSelectedUser(user);
-        }
-      } catch (error) {
-        console.error('Error fetching user details:', error);
+    if (groupIdParam) {
+      // Group chat mode
+      setChatType('group');
+      setSelectedUser(null);
+      const groupId = parseInt(groupIdParam);
+      if (!isNaN(groupId)) {
+        // We'll get the group details from the messages response
+      } else {
+        setSelectedGroup(null);
       }
-    };
-
-    fetchUserDetails();
-  }, [userIdParam]);
+    } else if (userIdParam) {
+      // Direct chat mode
+      setChatType('direct');
+      setSelectedGroup(null);
+      const userId = parseInt(userIdParam);
+      if (isNaN(userId)) {
+        setSelectedUser(null);
+      }
+      // We'll get the selected user from the messages response
+    } else {
+      // No chat selected
+      setChatType('direct');
+      setSelectedUser(null);
+      setSelectedGroup(null);
+    }
+  }, [userIdParam, groupIdParam]);
 
   /**
    * Loads more messages when scrolling up
@@ -265,32 +337,75 @@ const ChatInterface: React.FC = () => {
   }, [loadingMessages, hasMoreMessages]);
 
   /**
-   * Sends a new message to the selected user
+   * Sends a new message based on chat type
    * @param {string} content - Text content of the message
    */
   const sendMessage = useCallback(async (content: string) => {
-    if (!selectedUser || !content.trim() || !currentUser) return;
+    if (!content.trim() || !currentUser) return;
+    
+    // Check if we have a valid recipient based on chat type
+    if ((chatType === 'direct' && !selectedUser) || (chatType === 'group' && !selectedGroup)) {
+      return;
+    }
 
     try {
-      const response = await fetch(`/api/chats/${selectedUser.id}?messageInput=${encodeURIComponent(content)}`, {
-        method: 'POST',
-        credentials: 'include', // Include cookies in the request
-      });
+      let url = '';
+      let tempMessage: Message;
+      
+      // Determine which API endpoint to use based on chat type
+      if (chatType === 'direct' && selectedUser) {
+        url = `/api/chats/${selectedUser.id}?messageInput=${encodeURIComponent(content)}`;
+        
+        // Create a temporary direct message
+        tempMessage = {
+          id: Date.now(), // Temporary ID
+          content,
+          sender_id: currentUser.id,
+          recipient_id: selectedUser.id,
+          created_at: new Date().toISOString(),
+          sender: currentUser,
+          recipient: selectedUser,
+        };
+      } else if (chatType === 'group' && selectedGroup) {
+        url = `/api/groups/${selectedGroup.id}/messages`;
+        
+        // Create a temporary group message
+        tempMessage = {
+          id: Date.now(), // Temporary ID
+          content,
+          sender_id: currentUser.id,
+          group_id: selectedGroup.id,
+          created_at: new Date().toISOString(),
+          sender: currentUser,
+          group: selectedGroup,
+        };
+      } else {
+        throw new Error('Invalid chat type or missing recipient');
+      }
+      
+      // For direct messages, use GET with query params
+      // For group messages, use POST with JSON body
+      let response;
+      if (chatType === 'direct') {
+        response = await fetch(url, {
+          method: 'POST',
+          credentials: 'include', // Include cookies in the request
+        });
+      } else {
+        // For group messages, send as JSON body
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ messageInput: content }),
+          credentials: 'include', // Include cookies in the request
+        });
+      }
 
       if (!response.ok) {
         throw new Error('Failed to send message');
       }
-      
-      // Create a valid temporary message first to ensure we have something to display immediately
-      const tempMessage: Message = {
-        id: Date.now(), // Temporary ID
-        content, // Use the content from the input directly
-        sender_id: currentUser.id,
-        recipient_id: selectedUser.id,
-        created_at: new Date().toISOString(),
-        sender: currentUser,
-        recipient: selectedUser,
-      };
       
       // Add the temporary message to the UI immediately
       setMessages(prev => [...prev, tempMessage]);
@@ -305,8 +420,6 @@ const ChatInterface: React.FC = () => {
         // We already added the temporary message, so no need to do anything here
       }
 
-      // We've already added the message to the UI above, so we don't need to do it again here
-      
       // Scroll to bottom after adding a new message
       setTimeout(() => {
         if (messagesContainerRef.current) {
@@ -317,7 +430,7 @@ const ChatInterface: React.FC = () => {
       console.error('Error sending message:', error);
       alert('Failed to send message. Please try again.');
     }
-  }, [selectedUser, currentUser]);
+  }, [chatType, selectedUser, selectedGroup, currentUser]);
 
   /**
    * Checks if a message was sent by the current user
@@ -329,19 +442,21 @@ const ChatInterface: React.FC = () => {
   }, [currentUser]);
 
   return (
-    <div className="chat-container flex h-full">
-      {/* Main chat area */}
-      <div className="chat-content flex-1">
-        {/* Show chat header with recipient info if a user is selected */}
-        <ChatHeader 
-          recipient={selectedUser} 
-          isOnline={selectedUser ? onlineUsers[selectedUser.username] || false : false} 
-        />
+    <div className="chat-container" style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Chat header - only for direct messages */}
+      {chatType === 'direct' && selectedUser && (
+        <div className="chat-header-container">
+          <ChatHeader 
+            recipient={selectedUser} 
+            isOnline={onlineUsers[selectedUser.username] || false} 
+          />
+        </div>
+      )}
 
-        {/* Display chat messages or empty state */}
-        {selectedUser ? (
+      {/* Chat messages area */}
+      <div className="chat-messages-area" style={{ flex: 1, overflowY: 'auto', paddingBottom: '70px' }}>
+        {(selectedUser || selectedGroup) ? (
           <div className="chat-messages" ref={messagesContainerRef}>
-            {/* Load more messages button */}
             {hasMoreMessages && (
               <button 
                 onClick={loadMoreMessages}
@@ -352,10 +467,8 @@ const ChatInterface: React.FC = () => {
               </button>
             )}
             
-            {/* Display messages */}
             {messages.length > 0 ? (
-              // Sort messages by timestamp to ensure chronological order
-              [...messages]
+              messages
                 .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
                 .map((message, index) => (
                   <ChatMessage
@@ -385,15 +498,26 @@ const ChatInterface: React.FC = () => {
             <div className="text-sm">Click on a chat icon next to a user in the right sidebar to start chatting</div>
           </div>
         )}
+      </div>
 
-        {/* Chat input field - only shown when a user is selected */}
-        {selectedUser && (
+      {/* Chat input field */}
+      {(selectedUser || selectedGroup) && (
+        <div style={{ 
+          position: 'absolute', 
+          bottom: 0, 
+          left: 0, 
+          right: 0, 
+          width: '100%', 
+          backgroundColor: '#1a1a1a',
+          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          padding: '10px'
+        }}>
           <ChatInput 
             onSendMessage={sendMessage} 
             disabled={loadingMessages} 
           />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

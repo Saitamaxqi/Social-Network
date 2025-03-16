@@ -19,7 +19,6 @@ func CreateTables() error {
 		&models.Follow{},
 		&models.Group{},
 		&models.GroupMember{},
-		&models.GroupPost{},
 		&models.GroupEvent{},
 		&models.GroupEventResponse{},
 		&models.GroupMessage{},

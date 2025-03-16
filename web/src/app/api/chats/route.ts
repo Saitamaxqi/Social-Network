@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import axios from 'axios';
 
 /**
  * GET handler for retrieving recent chats
@@ -6,38 +7,52 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get auth cookie from the request - backend uses 'session' not 'session_token'
-    const authCookie = request.cookies.get('session')?.value || request.cookies.get('session_token')?.value;
+    // Get all cookies from the request to forward to the backend
+    const cookieHeader = request.headers.get('cookie') || '';
     
-    if (!authCookie) {
-      console.log('No session cookie found in chats API');
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    if (!cookieHeader) {
+      console.log('No cookies found in chats API');
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
     
-    console.log('Found session cookie in chats API, forwarding to backend');
+    console.log('Found cookies in chats API, forwarding to backend');
     
-    // Forward the request to the backend API - using path from server/api.go
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/chats`;
+    // Forward the request to the backend API
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+    const backendUrl = `${apiUrl}/chats`;
     console.log(`Forwarding to backend URL: ${backendUrl}`);
     
-    const response = await fetch(backendUrl, {
+    const response = await axios.get(backendUrl, {
       headers: {
-        'Cookie': `session=${authCookie}`,
+        'Cookie': cookieHeader
       },
-      credentials: 'include',
+      withCredentials: true
     });
     
-    if (!response.ok) {
-      console.log(`Backend returned status: ${response.status}`);
-      throw new Error('Failed to fetch recent chats');
-    }
-    
     console.log('Successfully fetched recent chats');
-    
-    const data = await response.json();
-    return NextResponse.json(data);
+    return NextResponse.json(response.data);
   } catch (error) {
     console.error('Error fetching recent chats:', error);
-    return NextResponse.json({ error: 'Failed to fetch recent chats' }, { status: 500 });
+    
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status || 500;
+      const errorMessage = error.response?.data?.error || 'Failed to fetch recent chats';
+      
+      console.error('Axios error details:', {
+        status,
+        message: errorMessage,
+        data: error.response?.data
+      });
+      
+      return NextResponse.json(
+        { error: errorMessage },
+        { status }
+      );
+    }
+    
+    return NextResponse.json(
+      { error: 'Failed to fetch recent chats' }, 
+      { status: 500 }
+    );
   }
 }

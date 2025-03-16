@@ -50,9 +50,17 @@ func GroupPostRequest(next http.HandlerFunc) http.HandlerFunc {
             return
         }
 
+        // Accept both 'content' and 'body' field names for compatibility
         content := r.FormValue("content")
+        body := r.FormValue("body")
+        
+        // Use body if content is empty
         if content == "" {
-            http.Error(w, "Content is required", http.StatusBadRequest)
+            content = body
+        }
+        
+        if content == "" {
+            http.Error(w, "Post content is required", http.StatusBadRequest)
             return
         }
 

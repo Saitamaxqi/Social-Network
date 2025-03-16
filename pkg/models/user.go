@@ -249,16 +249,18 @@ func (u *User) Session() (*Session, error) {
 // Default_component
 
 func (u *User) Posts() ([]*Post, error) {
-	rows, err := DB.Query(`SELECT * FROM posts WHERE user_id = ? AND post_id IS NULL`, u.ID)
+	// Use explicit column names instead of * to avoid schema changes breaking the code
+	rows, err := DB.Query(`SELECT id, title, body, media, likes, dislikes, post_id, user_id, visibility, group_id, created_at, updated_at FROM posts WHERE user_id = ? AND post_id IS NULL`, u.ID)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var posts []*Post
 
 	for rows.Next() {
 		post := &Post{}
-		err = rows.Scan(&post.ID, &post.Title, &post.Body, &post.Media, &post.Likes, &post.Dislikes, &post.PostID, &post.UserID, &post.CreatedAt, &post.UpdatedAt)
+		err = rows.Scan(&post.ID, &post.Title, &post.Body, &post.Media, &post.Likes, &post.Dislikes, &post.PostID, &post.UserID, &post.Visibility, &post.GroupID, &post.CreatedAt, &post.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -269,16 +271,18 @@ func (u *User) Posts() ([]*Post, error) {
 }
 
 func (u *User) Comments() ([]*Post, error) {
-	rows, err := DB.Query(`SELECT * FROM posts WHERE user_id = ? AND post_id IS NOT NULL`, u.ID)
+	// Use explicit column names instead of * to avoid schema changes breaking the code
+	rows, err := DB.Query(`SELECT id, title, body, media, likes, dislikes, post_id, user_id, visibility, group_id, created_at, updated_at FROM posts WHERE user_id = ? AND post_id IS NOT NULL`, u.ID)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var posts []*Post
 
 	for rows.Next() {
 		post := &Post{}
-		err = rows.Scan(&post.ID, &post.Title, &post.Body, &post.Media, &post.Likes, &post.Dislikes, &post.PostID, &post.UserID, &post.CreatedAt, &post.UpdatedAt)
+		err = rows.Scan(&post.ID, &post.Title, &post.Body, &post.Media, &post.Likes, &post.Dislikes, &post.PostID, &post.UserID, &post.Visibility, &post.GroupID, &post.CreatedAt, &post.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -299,6 +303,7 @@ func (u *User) LikedPosts() ([]*Post, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var posts []*Post
 
@@ -328,6 +333,7 @@ func (u *User) DislikedPosts() ([]*Post, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var posts []*Post
 

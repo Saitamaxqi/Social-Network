@@ -27,7 +27,7 @@ export default function ChatsPage() {
     const checkAuth = async () => {
       try {
         // Use the correct API endpoint path to match our API route
-        const response = await fetch('/api/check-session', {
+        const response = await fetch('/api/auth/check-session', {
           credentials: 'include' // Include cookies in the request
         });
         if (!response.ok) {
@@ -57,7 +57,7 @@ export default function ChatsPage() {
 
   return (
     <MainLayout>
-      <div className="h-full bg-gray-900 rounded-lg overflow-hidden shadow-lg relative">
+      <div className="h-full w-full bg-gray-900 rounded-lg overflow-hidden shadow-lg flex justify-center items-center">
         <ChatInterface />
       </div>
     </MainLayout>

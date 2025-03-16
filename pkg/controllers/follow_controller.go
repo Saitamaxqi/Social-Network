@@ -16,6 +16,12 @@ func FollowController(w http.ResponseWriter, r *http.Request) {
         UpdateFollow(w, r)
     case "DELETE":
         DeleteFollow(w, r)
+    case "GET":
+        if r.URL.Path == "/follow/followers" {
+            GetFollowers(w, r)
+        } else {
+            http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        }
     default:
         http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
     }
@@ -63,7 +69,11 @@ func CreateFollow(w http.ResponseWriter, r *http.Request) {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
         }
-    
+        err = notification.Refresh()
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
         hub.SendToUser(targetUserID, map[string]interface{}{
             "type":         "notification",
             "notification": notification,
@@ -83,7 +93,11 @@ func CreateFollow(w http.ResponseWriter, r *http.Request) {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
         }
-    
+        err = notification.Refresh()
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
         hub.SendToUser(targetUserID, map[string]interface{}{
             "type":         "notification",
             "notification": notification,
@@ -141,7 +155,11 @@ func UpdateFollow(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
+		err = notification.Refresh()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		// Send real-time notification
 		hub.SendToUser(follow.FollowerID, map[string]interface{}{
 			"type":         "notification",
@@ -180,7 +198,11 @@ func UpdateFollow(w http.ResponseWriter, r *http.Request) {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
-
+    err =notification.Refresh()
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
     // Send real-time notification
     hub.SendToUser(follow.FollowerID, map[string]interface{}{
         "type":         "notification",
@@ -222,4 +244,21 @@ func DeleteFollow(w http.ResponseWriter, r *http.Request) {
     }
 
     RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Unfollowed successfully"})
+}
+
+func GetFollowers(w http.ResponseWriter, r *http.Request) {
+    user, err := AuthUser(r)
+    if err != nil {
+        http.Error(w, "Unauthorized", http.StatusUnauthorized)
+        return
+    }
+
+    follow := &models.Follow{}
+    followers, err := follow.GetFollowers(user.ID)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    RespondWithJSON(w, http.StatusOK, followers)
 }

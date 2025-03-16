@@ -96,16 +96,22 @@ func PostPrivateMessageController(w http.ResponseWriter, r *http.Request) {
 		Date:     time.Now(),
 	}
 
-	hub.SendToUser(recipientID, map[string]interface{}{
-		"type":         "notification",
-		"notification": notification,
-	})
+
 
 	err = notification.Create()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}	
+	err = notification.Refresh()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+	hub.SendToUser(recipientID, map[string]interface{}{
+		"type":         "notification",
+		"notification": notification,
+	})
 	//add a unique id for each message
 	hub.SendToUser(recipientID, map[string]interface{}{
 		"type": "message",
@@ -129,11 +135,25 @@ func GetPrivateMessagesController(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid recipient ID", http.StatusBadRequest)
 		return
 	}
+	recipient := &models.User{ID: recipientID}
+	err = recipient.Refresh()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
 	page, err := strconv.Atoi(r.URL.Query().Get("page"))
+	if err != nil {
+		page = 0
+	}
 	messages, err := models.GetChatHistory(user.ID, recipientID, 10, page*10)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	RespondWithJSON(w, http.StatusOK, messages)
+	response := map[string]interface{}{
+		"messages": messages,
+		"recipient": recipient,
+	}
+	RespondWithJSON(w, http.StatusOK, response)
 }

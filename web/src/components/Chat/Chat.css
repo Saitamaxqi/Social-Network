@@ -8,134 +8,148 @@
 
 /* Main container that holds the entire chat interface */
 .chat-container {
-  display: flex; /* Use flexbox for layout */
-  flex-direction: column; /* Stack children vertically */
-  height: 100%; /* Take full height of parent */
-  width: 100%; /* Take full width */
-  border-radius: 0.5rem; /* Rounded corners */
-  overflow: hidden; /* Hide content that exceeds the container */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  background-color: #1a1a1a;
+  color: white;
+  overflow: hidden;
 }
 
-/* Sidebar showing list of recent chat conversations */
-.chat-sidebar {
-  width: 250px; /* Fixed width for sidebar */
-  border-right: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border separator */
-  overflow-y: auto; /* Allow vertical scrolling when content overflows */
-}
-
-/* Individual chat item in the sidebar list */
-.chat-sidebar-item {
-  padding: 0.75rem 1rem; /* Inner spacing */
-  cursor: pointer; /* Show pointer cursor on hover */
-  transition: background-color 0.2s; /* Smooth transition for hover effect */
-}
-
-/* Hover effect for chat items */
-.chat-sidebar-item:hover {
-  background-color: rgba(255, 255, 255, 0.05); /* Slightly lighter on hover */
-}
-
-/* Style for the currently selected chat */
-.chat-sidebar-item.active {
-  background-color: rgba(255, 255, 255, 0.1); /* Brighter than hover state */
-}
-
-/* Main chat content area */
-.chat-content {
-  flex: 1; /* Take up remaining space */
-  display: flex; /* Use flexbox for layout */
-  flex-direction: column; /* Stack children vertically */
-  background-color: rgba(0, 0, 0, 0.3); /* Semi-transparent dark background */
-  width: 100%; /* Take full width */
+/* Header container */
+.chat-header-container {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: #1a1a1a;
+  z-index: 10;
 }
 
 /* Header area showing current chat recipient */
 .chat-header {
-  padding: 1rem; /* Inner spacing */
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border separator */
-  display: flex; /* Use flexbox for layout */
-  align-items: center; /* Vertically center items */
-  gap: 0.5rem; /* Space between child elements */
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 /* User avatar circle - shows first letter of username */
 .user-avatar {
-  width: 2.5rem; /* Fixed width */
-  height: 2.5rem; /* Fixed height - creates a circle when combined with border-radius */
-  border-radius: 50%; /* Make it circular */
-  background-color: rgba(255, 255, 255, 0.1); /* Light background */
-  display: flex; /* Use flexbox for centering content */
-  align-items: center; /* Vertically center content */
-  justify-content: center; /* Horizontally center content */
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Online status indicator dot */
 .user-status {
-  width: 0.75rem; /* Size of the status dot */
-  height: 0.75rem; /* Size of the status dot */
-  border-radius: 50%; /* Make it circular */
-  margin-left: -0.75rem; /* Negative margin to overlay on avatar */
-  margin-bottom: -0.75rem; /* Negative margin to overlay on avatar */
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  margin-left: -0.75rem;
+  margin-bottom: -0.75rem;
 }
 
 /* Green color for online status */
 .user-status.online {
-  background-color: #10b981; /* Green color */
+  background-color: #10b981;
 }
 
 /* Gray color for offline status */
 .user-status.offline {
-  background-color: #6b7280; /* Gray color */
+  background-color: #6b7280;
+}
+
+/* Messages area */
+.chat-messages-area {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 70px; /* Space for input */
+  height: calc(100% - 140px); /* Adjust for header and input */
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  background-color: #1a1a1a;
 }
 
 /* Container for chat messages */
 .chat-messages {
-  flex: 1; /* Take up remaining space */
-  padding: 1rem; /* Inner spacing */
-  overflow-y: auto; /* Allow vertical scrolling when content overflows */
-  display: flex; /* Use flexbox for layout */
-  flex-direction: column; /* Normal column direction */
-  justify-content: flex-start; /* Align messages from the top */
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  gap: 1rem;
+  overflow-y: auto;
+  flex: 1;
 }
 
 /* Base style for all message bubbles */
 .message {
-  margin-bottom: 1rem; /* Space between messages */
-  max-width: 70%; /* Limit width to 70% of container */
-  padding: 0.75rem 1rem; /* Inner spacing */
-  border-radius: 1rem; /* Rounded corners */
-  position: relative; /* For positioning child elements */
+  max-width: 70%;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  margin-bottom: 0.5rem;
+  word-break: break-word;
+  position: relative;
 }
 
 /* Style for messages sent by current user */
-.message-sent {
-  align-self: flex-end; /* Align to right side */
-  background-color: #2563eb; /* Blue background */
-  border-bottom-right-radius: 0; /* Sharp corner to indicate message direction */
+.message-from-me {
+  align-self: flex-end;
+  background-color: #2563eb;
+  border-bottom-right-radius: 0.25rem;
 }
 
 /* Style for messages received from other users */
-.message-received {
-  align-self: flex-start; /* Align to left side */
-  background-color: rgba(255, 255, 255, 0.1); /* Light transparent background */
-  border-bottom-left-radius: 0; /* Sharp corner to indicate message direction */
+.message-from-other {
+  align-self: flex-start;
+  background-color: #374151;
+  border-bottom-left-radius: 0.25rem;
 }
 
 /* Timestamp display for messages */
-.message-time {
-  font-size: 0.75rem; /* Smaller text */
-  opacity: 0.7; /* Partially transparent */
-  margin-top: 0.25rem; /* Space above timestamp */
+.message-timestamp {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  margin-top: 0.25rem;
+  text-align: right;
 }
 
+/* Sender display for messages */
+.message-sender {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  opacity: 0.9;
+}
 
-/* Message input area at bottom of chat */
+/* Chat input container */
+.chat-input-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  background-color: #1a1a1a;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0;
+  z-index: 100;
+}
+
+.chat-input-wrapper {
+  width: 100%;
+  padding: 10px;
+}
+
+/* Chat input form */
 .chat-input {
-  padding: 1rem; /* Inner spacing */
-  border-top: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border separator */
-  display: flex; /* Use flexbox for layout */
-  gap: 0.5rem; /* Space between input and button */
-  align-items: center; /* Center items vertically */
+  display: flex;
+  width: 100%;
+  align-items: center;
 }
 
 /* Emoji button styling */
@@ -145,7 +159,7 @@
   align-items: center;
   width: 2.5rem;
   height: 2.5rem;
-  min-width: 2.5rem; /* Prevent shrinking */
+  min-width: 2.5rem;
   border: none;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -154,42 +168,41 @@
 
 /* Text input field styling */
 .chat-input input {
-  flex: 1; /* Take up remaining space */
-  background-color: rgba(255, 255, 255, 0.1); /* Semi-transparent background */
-  border: none; /* Remove default border */
-  border-radius: 1.5rem; /* Fully rounded corners */
-  padding: 0.75rem 1rem; /* Inner spacing */
-  color: white; /* Text color */
-  outline: none; /* Remove outline on focus */
+  flex: 1;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 1.5rem;
+  padding: 0.75rem 1rem;
+  color: white;
+  outline: none;
 }
 
 /* Send button styling */
 .chat-input button {
-  background-color: #2563eb; /* Blue background */
-  border: none; /* Remove default border */
-  border-radius: 50%; /* Make it circular */
-  width: 2.5rem; /* Fixed width */
-  height: 2.5rem; /* Fixed height */
-  display: flex; /* Use flexbox for centering content */
-  align-items: center; /* Vertically center content */
-  justify-content: center; /* Horizontally center content */
-  cursor: pointer; /* Show pointer cursor on hover */
-  transition: background-color 0.2s; /* Smooth transition for hover effect */
+  background-color: #2563eb;
+  border: none;
+  border-radius: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
 /* Hover effect for send button */
 .chat-input button:hover {
-  background-color: #1d4ed8; /* Darker blue on hover */
+  background-color: #1d4ed8;
 }
 
 /* Empty state display when no chat is selected or no messages */
 .empty-state {
-  display: flex; /* Use flexbox for layout */
-  flex-direction: column; /* Stack children vertically */
-  align-items: center; /* Horizontally center content */
-  justify-content: center; /* Vertically center content */
-  height: 100%; /* Take full height of parent */
-  text-align: center; /* Center-align text */
-  padding: 2rem; /* Inner spacing */
-  opacity: 0.7; /* Partially transparent */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 2rem;
 }

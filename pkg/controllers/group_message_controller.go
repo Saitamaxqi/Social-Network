@@ -20,7 +20,7 @@ func SendGroupMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	groupID, err := strconv.Atoi(r.URL.Query().Get("group_id"))
+	groupID, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "Invalid group ID", http.StatusBadRequest)
 		return
@@ -50,35 +50,55 @@ func SendGroupMessage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	// Get all group members for notification
-	rows, err := models.DB.Query(`
-		SELECT user_id 
-		FROM group_members 
-		WHERE group_id = ? AND user_id != ? AND status = 'member'`,
-		groupID, user.ID)
+	group := models.Group{ID: groupID}
+	err = group.Refresh()
+	if err != nil {
+		http.Error(w, "Group not found", http.StatusNotFound)
+		return
+	}
+	members, err := group.GetMembers()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
-
 	// Notify all group members about the new message
-	for rows.Next() {
-		var memberID int
-		if err := rows.Scan(&memberID); err != nil {
+	for _, member := range members {
+		if member.UserID == user.ID {
 			continue
 		}
 
 		notification := &models.Notification{
-			UserID:   memberID,
-			Text:     "New message in group",
+			UserID:   member.UserID,
+			Text:     "New message in group " + group.Title,
 			SenderID: user.ID,
 			Type:     "group_message",
-			LinkID:   groupID,
+			LinkID:   group.ID,
 			Date:     time.Now(),
 		}
-		notification.Create()
+		err = notification.Create()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		err = notification.Refresh()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		hub.SendToUser(member.UserID, map[string]interface{}{
+			"type": "message",
+			"message": map[string]interface{}{
+				"content":    content,
+				"sender":     user,
+				"created_at": time.Now(),
+			},
+		})
+
+		hub.SendToUser(member.UserID, map[string]interface{}{
+			"type":         "notification",
+			"notification": notification,
+		})
 	}
 
 	RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Message sent successfully"})
@@ -97,9 +117,15 @@ func GetGroupMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	groupID, err := strconv.Atoi(r.URL.Query().Get("group_id"))
+	groupID, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
+	group := models.Group{ID: groupID}
+	err = group.Refresh()
+	if err != nil {
+		http.Error(w, "Group not found", http.StatusNotFound)
 		return
 	}
 
@@ -126,6 +152,10 @@ func GetGroupMessages(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	response := map[string]interface{}{
+		"messages": messages,
+		"group":    group,
+	}
 
-	RespondWithJSON(w, http.StatusOK, messages)
+	RespondWithJSON(w, http.StatusOK, response)
 }

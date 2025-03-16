@@ -1,7 +1,6 @@
 package models
 
 import (
-	"database/sql"
 	"time"
 )
 
@@ -13,9 +12,9 @@ type Group struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 
-	Creator *User `json:"creator,omitempty"`
-	Members []*GroupMember `json:"members,omitempty"`
-	IsMember bool `json:"is_member,omitempty"`
+	Creator  *User          `json:"creator,omitempty"`
+	Members  []*GroupMember `json:"members,omitempty"`
+	IsMember bool           `json:"is_member,omitempty"`
 }
 
 type GroupMember struct {
@@ -30,20 +29,7 @@ type GroupMember struct {
 	Group *Group `json:"group,omitempty"`
 }
 
-type GroupPost struct {
-	ID        int            `json:"id"`
-	GroupID   int            `json:"group_id"`
-	UserID    int            `json:"user_id"`
-	Title     string         `json:"title"`
-	Content   string         `json:"content"`
-	Media     sql.NullString `json:"media"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
 
-	User    *User         `json:"user,omitempty"`
-	Group   *Group        `json:"group,omitempty"`
-	Comments []*GroupPost `json:"comments,omitempty"`
-}
 
 type GroupMessage struct {
 	ID        int       `json:"id"`
@@ -66,8 +52,8 @@ type GroupEvent struct {
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 
-	Creator *User `json:"creator,omitempty"`
-	Group   *Group `json:"group,omitempty"`
+	Creator   *User                 `json:"creator,omitempty"`
+	Group     *Group                `json:"group,omitempty"`
 	Responses []*GroupEventResponse `json:"responses,omitempty"`
 }
 
@@ -112,22 +98,7 @@ func (gm *GroupMember) CreateTable() error {
 	return err
 }
 
-func (gp *GroupPost) CreateTable() error {
-	query := `CREATE TABLE IF NOT EXISTS group_posts (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		group_id INTEGER NOT NULL,
-		user_id INTEGER NOT NULL,
-		title TEXT NOT NULL,
-		content TEXT,
-		media TEXT,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
-		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-	)`
-	_, err := DB.Exec(query)
-	return err
-}
+
 
 func (ge *GroupEvent) CreateTable() error {
 	query := `CREATE TABLE IF NOT EXISTS group_events (
@@ -206,7 +177,7 @@ func (g *Group) Delete() error {
 	_, err := DB.Exec(query, g.ID)
 	return err
 }
-
+//make it return all the model fields
 func (g *Group) Refresh() error {
 	query := `SELECT id, title, description, creator_id, created_at, updated_at FROM groups WHERE id = ?`
 	return DB.QueryRow(query, g.ID).Scan(&g.ID, &g.Title, &g.Description, &g.CreatorID, &g.CreatedAt, &g.UpdatedAt)
@@ -231,7 +202,28 @@ func (gm *GroupMember) Index() ([]Model, error) {
 
 	for rows.Next() {
 		var member GroupMember
-		err = rows.Scan(&member.ID, &member.GroupID, &member.UserID, &member.Status, 
+		err = rows.Scan(&member.ID, &member.GroupID, &member.UserID, &member.Status,
+			&member.CreatedAt, &member.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		members = append(members, &member)
+	}
+	return members, nil
+}
+
+func (g *Group) GetMembers() ([]*GroupMember, error) {
+	var members []*GroupMember
+	rows, err := DB.Query(`SELECT id, group_id, user_id, status, created_at, updated_at 
+		FROM group_members WHERE group_id = ? AND status = 'member'`, g.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var member GroupMember
+		err = rows.Scan(&member.ID, &member.GroupID, &member.UserID, &member.Status,
 			&member.CreatedAt, &member.UpdatedAt)
 		if err != nil {
 			return nil, err
@@ -270,8 +262,8 @@ func (gm *GroupMember) Delete() error {
 
 func (gm *GroupMember) Refresh() error {
 	query := `SELECT id, group_id, user_id, status, created_at, updated_at 
-		FROM group_members WHERE id = ?`
-	return DB.QueryRow(query, gm.ID).Scan(
+		FROM group_members WHERE group_id = ? AND user_id = ?`
+	return DB.QueryRow(query, gm.GroupID, gm.UserID).Scan(
 		&gm.ID, &gm.GroupID, &gm.UserID, &gm.Status, &gm.CreatedAt, &gm.UpdatedAt)
 }
 
@@ -282,70 +274,7 @@ func (gm *GroupMember) Exists() bool {
 	return exists
 }
 
-// GroupPost CRUD methods
-func (gp *GroupPost) Index() ([]Model, error) {
-	var posts []Model
-	rows, err := DB.Query(`SELECT id, group_id, user_id, title, content, media, 
-		created_at, updated_at FROM group_posts`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
 
-	for rows.Next() {
-		var post GroupPost
-		err = rows.Scan(&post.ID, &post.GroupID, &post.UserID, &post.Title, 
-			&post.Content, &post.Media, &post.CreatedAt, &post.UpdatedAt)
-		if err != nil {
-			return nil, err
-		}
-		posts = append(posts, &post)
-	}
-	return posts, nil
-}
-
-func (gp *GroupPost) Create() error {
-	query := `INSERT INTO group_posts (group_id, user_id, title, content, media) 
-		VALUES (?, ?, ?, ?, ?)`
-	result, err := DB.Exec(query, gp.GroupID, gp.UserID, gp.Title, gp.Content, gp.Media)
-	if err != nil {
-		return err
-	}
-	id, err := result.LastInsertId()
-	if err != nil {
-		return err
-	}
-	gp.ID = int(id)
-	return nil
-}
-
-func (gp *GroupPost) Update() error {
-	query := `UPDATE group_posts SET title = ?, content = ?, media = ?, 
-		updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-	_, err := DB.Exec(query, gp.Title, gp.Content, gp.Media, gp.ID)
-	return err
-}
-
-func (gp *GroupPost) Delete() error {
-	query := `DELETE FROM group_posts WHERE id = ?`
-	_, err := DB.Exec(query, gp.ID)
-	return err
-}
-
-func (gp *GroupPost) Refresh() error {
-	query := `SELECT id, group_id, user_id, title, content, media, created_at, updated_at 
-		FROM group_posts WHERE id = ?`
-	return DB.QueryRow(query, gp.ID).Scan(
-		&gp.ID, &gp.GroupID, &gp.UserID, &gp.Title, &gp.Content, &gp.Media, 
-		&gp.CreatedAt, &gp.UpdatedAt)
-}
-
-func (gp *GroupPost) Exists() bool {
-	var exists bool
-	query := `SELECT EXISTS(SELECT 1 FROM group_posts WHERE id = ?)`
-	DB.QueryRow(query, gp.ID).Scan(&exists)
-	return exists
-}
 
 // GroupEvent CRUD methods
 func (ge *GroupEvent) Index() ([]Model, error) {
@@ -359,7 +288,7 @@ func (ge *GroupEvent) Index() ([]Model, error) {
 
 	for rows.Next() {
 		var event GroupEvent
-		err = rows.Scan(&event.ID, &event.GroupID, &event.CreatorID, &event.Title, 
+		err = rows.Scan(&event.ID, &event.GroupID, &event.CreatorID, &event.Title,
 			&event.Description, &event.DateTime, &event.CreatedAt, &event.UpdatedAt)
 		if err != nil {
 			return nil, err
@@ -401,7 +330,7 @@ func (ge *GroupEvent) Refresh() error {
 	query := `SELECT id, group_id, creator_id, title, description, date_time, 
 		created_at, updated_at FROM group_events WHERE id = ?`
 	return DB.QueryRow(query, ge.ID).Scan(
-		&ge.ID, &ge.GroupID, &ge.CreatorID, &ge.Title, &ge.Description, 
+		&ge.ID, &ge.GroupID, &ge.CreatorID, &ge.Title, &ge.Description,
 		&ge.DateTime, &ge.CreatedAt, &ge.UpdatedAt)
 }
 
@@ -424,7 +353,7 @@ func (ger *GroupEventResponse) Index() ([]Model, error) {
 
 	for rows.Next() {
 		var response GroupEventResponse
-		err = rows.Scan(&response.ID, &response.EventID, &response.UserID, 
+		err = rows.Scan(&response.ID, &response.EventID, &response.UserID,
 			&response.Response, &response.CreatedAt, &response.UpdatedAt)
 		if err != nil {
 			return nil, err
@@ -466,7 +395,7 @@ func (ger *GroupEventResponse) Refresh() error {
 	query := `SELECT id, event_id, user_id, response, created_at, updated_at 
 		FROM group_event_responses WHERE id = ?`
 	return DB.QueryRow(query, ger.ID).Scan(
-		&ger.ID, &ger.EventID, &ger.UserID, &ger.Response, 
+		&ger.ID, &ger.EventID, &ger.UserID, &ger.Response,
 		&ger.CreatedAt, &ger.UpdatedAt)
 }
 
@@ -503,7 +432,7 @@ func (gm *GroupMessage) Index() ([]Model, error) {
 
 	for rows.Next() {
 		var message GroupMessage
-		err = rows.Scan(&message.ID, &message.GroupID, &message.SenderID, 
+		err = rows.Scan(&message.ID, &message.GroupID, &message.SenderID,
 			&message.Content, &message.CreatedAt)
 		if err != nil {
 			return nil, err
