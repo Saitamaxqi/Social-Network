@@ -15,12 +15,40 @@ interface Profile {
   about_me?: string;
   avatar: { String: string; Valid: boolean };
 }
+interface Post {
+  id: number;
+  title: string;
+  body: string;
+  media?: string | null; // Handle nullable SQL fields
+  likes: number;
+  dislikes: number;
+  post_id?: number | null;
+  user_id: number;
+  created_at: string; // JSON usually sends dates as strings
+  updated_at: string;
+  original_post?: Post | null; // Recursive structure
+  comments: Post[]; // Array of comments (nested posts)
+  // categories: Category[]; // Array of categories
+  user: Profile; // The user who made the post
+  interaction: number;
+}
+
+interface Category {
+  id: number;
+  name: string;
+}
 
 interface ProfileStats {
   posts_count: number;
   followers_count: number;
   following_count: number;
 }
+interface Activity {
+  posts: Post[]; 
+  followers: any[];
+  following: any[];
+}
+
 
 export function ProfilePage() {
   const { id } = useParams(); // Get dynamic route parameter
@@ -29,7 +57,7 @@ export function ProfilePage() {
   const router = useRouter(); // Initialize useRouter
   const [isOwner, setIsOwner] = useState<boolean | null>(null);
   const [stats, setStats] = useState<ProfileStats | null>(null);
-  const [activity, setActivity] = useState<{ followers: any[]; following: any[] } | null>(null);
+  const [activity, setActivity] = useState<Activity| null>(null);
   const [showPopup, setShowPopup] = useState(false);
 const [popupType, setPopupType] = useState<"followers" | "following" | null>(null);
 
@@ -153,6 +181,75 @@ const [popupType, setPopupType] = useState<"followers" | "following" | null>(nul
     </div>
   </div>
 )}
+
+<div>
+  <p><strong>Posts:</strong> {stats?.posts_count ?? 0}</p>
+</div>
+
+<div>
+  {activity?.posts && activity.posts.length > 0 ? (
+    activity.posts.map((post) => (
+      <div
+        key={post.id}
+        style={{
+          border: "1px solid #ddd",
+          padding: "10px",
+          margin: "10px 0",
+        }}
+      >
+        <h3>{post.title}</h3>
+        <p>{post.body}</p>
+        
+        {/* Display media if available */}
+        {post.media && (
+          <img
+            src={post.media}
+            alt="Post media"
+            style={{ maxWidth: "100%" }}
+          />
+        )}
+
+        <p>👍 {post.likes} | 👎 {post.dislikes}</p>
+        <p>Posted on: {new Date(post.created_at).toLocaleDateString()}</p>
+
+        {/* Display original post if it's a repost */}
+        {post.original_post && (
+          <div style={{ padding: "10px", borderLeft: "3px solid #ccc", marginTop: "10px" }}>
+            <h4>Reposted from: {post.original_post.user.username}</h4>
+            <p>{post.original_post.body}</p>
+          </div>
+        )}
+
+        {/* Display Comments */}
+        {/* {(post.comments ?? []).length > 0 ? (
+  post.comments.map((comment) => (
+    <div key={comment.id}>
+      <p>@{comment.user?.username || "Unknown"}: {comment.body}</p>
+    </div>
+  ))
+) : (
+  <p>No comments available.</p>
+)} */}
+
+
+        {/* Display Categories
+        {(post.categories ?? []).length > 0 ? (
+  post.categories.map((category) => (
+    <div key={category.id}>
+      <p>{category.name}</p>
+    </div>
+  ))
+) : (
+  <p>No categories available.</p>
+)} */}
+
+      </div>
+    ))
+  ) : (
+    <p>No posts available.</p>
+  )}
+</div>
+
 
 
     </div>
