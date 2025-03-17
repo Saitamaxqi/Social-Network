@@ -116,9 +116,11 @@ func PostPrivateMessageController(w http.ResponseWriter, r *http.Request) {
 	hub.SendToUser(recipientID, map[string]interface{}{
 		"type": "message",
 		"message": map[string]interface{}{
-			"content":    message,
-			"sender":     user,
-			"created_at": time.Now(),
+			"content":      message,
+			"sender":       user,
+			"sender_id":    user.ID,
+			"recipient_id": recipientID,
+			"created_at":   time.Now(),
 		},
 	})
 	RespondWithJSON(w, http.StatusOK, "Message sent")

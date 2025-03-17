@@ -87,11 +87,13 @@ func SendGroupMessage(w http.ResponseWriter, r *http.Request) {
 		}
 
 		hub.SendToUser(member.UserID, map[string]interface{}{
-			"type": "message",
+			"type": "group_message",
 			"message": map[string]interface{}{
 				"content":    content,
 				"sender":     user,
+				"group_id":   group.ID,
 				"created_at": time.Now(),
+				"group":      group,
 			},
 		})
 
