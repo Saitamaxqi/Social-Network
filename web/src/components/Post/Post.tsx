@@ -35,9 +35,10 @@ interface Post {
 
 interface PostProps {
   groupId?: string;
+  scrollToPostId?: string | null;
 }
 
-export default function Post({ groupId }: PostProps) {
+export default function Post({ groupId, scrollToPostId }: PostProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
@@ -554,7 +555,8 @@ export default function Post({ groupId }: PostProps) {
           {posts.map((post, index) => (
             <div
               key={post.id}
-              className="border border-gray-700 rounded-lg p-4 sm:p-6 hover:shadow-lg transition-shadow bg-white/5 backdrop-blur-sm w-full"
+              id={`post-${post.id}`}
+              className={`border border-gray-700 rounded-lg p-4 sm:p-6 hover:shadow-lg transition-shadow bg-white/5 backdrop-blur-sm w-full ${scrollToPostId === post.id ? 'highlight-post' : ''}`}
             >
               <div className="flex justify-between items-start mb-3 sm:mb-4">
                 <div className="flex items-center gap-2">
