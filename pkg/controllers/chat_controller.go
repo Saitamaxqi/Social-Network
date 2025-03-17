@@ -143,7 +143,16 @@ func GetPrivateMessagesController(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+	//check if they have a follow relation
+	hasFollow, err := models.HasFollowRelation(user.ID, recipientID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !hasFollow {
+		http.Error(w, "You do not have a follow relation with this user", http.StatusUnauthorized)
+		return
+	}
 	page, err := strconv.Atoi(r.URL.Query().Get("page"))
 	if err != nil {
 		page = 0
