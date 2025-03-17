@@ -5,6 +5,7 @@ import (
 	"forum/pkg/models"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 func ProfileController(w http.ResponseWriter, r *http.Request) {
@@ -80,15 +81,17 @@ func UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse form values
-	age, err := strconv.Atoi(r.FormValue("age"))
+	dateOfBirthStr := r.FormValue("date_of_birth")
+	// Validate date format
+	dateOfBirth, err := time.Parse("2006-01-02", dateOfBirthStr)
 	if err != nil {
-		http.Error(w, "Invalid age", http.StatusBadRequest)
+		http.Error(w, "Invalid date of birth format. Please use YYYY-MM-DD", http.StatusBadRequest)
 		return
 	}
 
 	// Update all user fields
 	currentUser.Username = r.FormValue("username")
-	currentUser.Age = age
+	currentUser.DateOfBirth = dateOfBirth
 	currentUser.Gender = r.FormValue("gender")
 	currentUser.FirstName = r.FormValue("first_name")
 	currentUser.LastName = r.FormValue("last_name")

@@ -6,7 +6,6 @@ import (
 	"forum/pkg/consts"
 	"forum/pkg/models"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -43,9 +42,11 @@ func Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func Register(w http.ResponseWriter, r *http.Request) {
-	age, err := strconv.Atoi(r.FormValue("age"))
+	dateOfBirthStr := r.FormValue("date_of_birth")
+	// Validate date format
+	dateOfBirth, err := time.Parse("2006-01-02", dateOfBirthStr)
 	if err != nil {
-		http.Error(w, "Invalid age", http.StatusBadRequest)
+		http.Error(w, "Invalid date of birth format. Please use YYYY-MM-DD", http.StatusBadRequest)
 		return
 	}
 
@@ -58,7 +59,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	// Create new user with all fields
 	user := &models.User{
 		Username:    username,
-		Age:         age,
+		DateOfBirth: dateOfBirth,
 		Gender:      r.FormValue("gender"),
 		FirstName:   r.FormValue("first_name"),
 		LastName:    r.FormValue("last_name"),

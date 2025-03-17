@@ -17,7 +17,7 @@ import (
 type User struct {
     ID          int            `json:"id"`
     Username    string         `json:"username"`
-    Age         int            `json:"age"`
+    DateOfBirth time.Time      `json:"date_of_birth"`
     Gender      string         `json:"gender"`
     FirstName   string         `json:"first_name"`
     LastName    string         `json:"last_name"`
@@ -39,7 +39,7 @@ func (u *User) CreateTable() error {
     _, err := DB.Exec(`CREATE TABLE IF NOT EXISTS users (
         id                  INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         username            VARCHAR(50) NOT NULL UNIQUE,
-        age                 INTEGER NOT NULL,
+        date_of_birth       DATETIME NOT NULL,
         gender              VARCHAR(10) NOT NULL,
         first_name          VARCHAR(50) NOT NULL,
         last_name           VARCHAR(50) NOT NULL,
@@ -69,7 +69,7 @@ func (u *User) Index() ([]Model, error) {
 	for rows.Next() {
 		user := &User{}
 		//fix err line below to match the new struct
-		err = rows.Scan(&user.ID, &user.Username, &user.Age, &user.Gender, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Type, &user.Requested, &user.CreatedAt, &user.UpdatedAt)
+		err = rows.Scan(&user.ID, &user.Username, &user.DateOfBirth, &user.Gender, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Type, &user.Requested, &user.CreatedAt, &user.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -81,7 +81,7 @@ func (u *User) Index() ([]Model, error) {
 }
 func GetUserByID(id int) (*User, error) {
 		user := &User{}
-		err := DB.QueryRow(`SELECT * FROM users WHERE id = ?`, id).Scan(&user.ID, &user.Username, &user.Age, &user.Gender, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Type, &user.Requested, &user.CreatedAt, &user.UpdatedAt)
+		err := DB.QueryRow(`SELECT * FROM users WHERE id = ?`, id).Scan(&user.ID, &user.Username, &user.DateOfBirth, &user.Gender, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Type, &user.Requested, &user.CreatedAt, &user.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -104,9 +104,9 @@ func (u *User) Create() error {
 
     u.Email = strings.ToLower(u.Email)
 
-    result, err := DB.Exec(`INSERT INTO users (username, age, gender, first_name, last_name, email, password, type, avatar, profile_type, about_me) 
+    result, err := DB.Exec(`INSERT INTO users (username, date_of_birth, gender, first_name, last_name, email, password, type, avatar, profile_type, about_me) 
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
-                            u.Username, u.Age, u.Gender, u.FirstName, u.LastName, u.Email, u.Password, u.Type, u.Avatar, u.ProfileType, u.AboutMe)
+                            u.Username, u.DateOfBirth, u.Gender, u.FirstName, u.LastName, u.Email, u.Password, u.Type, u.Avatar, u.ProfileType, u.AboutMe)
     if err != nil {
         return err
     }
@@ -170,7 +170,7 @@ func (u *User) Refresh() error {
 	}
 
 	err := DB.QueryRow(`SELECT * FROM users WHERE id = ?`, u.ID).Scan(
-		&u.ID, &u.Username, &u.Age, &u.Gender, &u.FirstName, &u.LastName, 
+		&u.ID, &u.Username, &u.DateOfBirth, &u.Gender, &u.FirstName, &u.LastName, 
 		&u.Email, &u.Password, &u.Type, &u.Requested,&u.Avatar,&u.ProfileType,&u.AboutMe, &u.CreatedAt, &u.UpdatedAt)	
 	if err != nil {
 		return errors.New("user does not exist")
@@ -213,7 +213,7 @@ func GetUserByNicknameOrEmail(identifier string) (*User, error) {
     user := &User{}
     identifier = strings.TrimSpace(strings.ToLower(identifier))
     err := DB.QueryRow(`SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?`, identifier, identifier).
-        Scan(&user.ID, &user.Username, &user.Age, &user.Gender, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Type, &user.Requested,&user.Avatar,&user.ProfileType,&user.AboutMe, &user.CreatedAt, &user.UpdatedAt)
+        Scan(&user.ID, &user.Username, &user.DateOfBirth, &user.Gender, &user.FirstName, &user.LastName, &user.Email, &user.Password, &user.Type, &user.Requested,&user.Avatar,&user.ProfileType,&user.AboutMe, &user.CreatedAt, &user.UpdatedAt)
     return user, err
 }
 

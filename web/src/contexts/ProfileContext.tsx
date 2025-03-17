@@ -6,7 +6,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 interface Profile {
   id: number;
   username: string;
-  age: number;
+  date_of_birth: string;
   gender: string;
   first_name: string;
   last_name: string;

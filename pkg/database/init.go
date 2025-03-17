@@ -6,6 +6,7 @@ import (
 	"forum/pkg/models"
 	"log"
 	"os"
+	"time"
 )
 
 func Init() {
@@ -25,7 +26,7 @@ func Init() {
 	// Create default admin user
 	admin := &models.User{
 		Username:    "admin",
-		Age:        30,
+		DateOfBirth: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 		Gender:     "male",
 		FirstName:  "Admin",
 		LastName:   "User",

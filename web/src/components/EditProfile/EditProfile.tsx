@@ -7,7 +7,7 @@ import { useEffect, useState, ChangeEvent, FormEvent } from "react";
 interface Profile {
   id: number;
   username: string;
-  age: number;
+  date_of_birth: string;
   gender: string;
   first_name: string;
   last_name: string;
@@ -100,7 +100,23 @@ export function EditProfilePage() {
         <input type="text" name="first_name" value={profile.first_name} onChange={handleChange} className="border p-2 w-full" placeholder="First Name" required />
         <input type="text" name="last_name" value={profile.last_name} onChange={handleChange} className="border p-2 w-full" placeholder="Last Name" required />
         <input type="text" name="username" value={profile.username} onChange={handleChange} className="border p-2 w-full" placeholder="Username" required />
-        <input type="number" name="age" value={profile.age} onChange={handleChange} className="border p-2 w-full" placeholder="Age" required />
+        <div className="relative">
+          <input 
+            type="date" 
+            name="date_of_birth" 
+            value={profile.date_of_birth ? profile.date_of_birth.substring(0, 10) : ''} 
+            onChange={handleChange} 
+            className="border p-2 w-full pl-10" 
+            required 
+            max={new Date().toISOString().split('T')[0]}
+            onFocus={(e) => e.target.showPicker()}
+          />
+          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+            <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+              <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+            </svg>
+          </div>
+        </div>
         <input type="email" name="email" value={profile.email} onChange={handleChange} className="border p-2 w-full" placeholder="Email" required />
         <input type="text" name="profile_type" value={profile.profile_type} onChange={handleChange} className="border p-2 w-full" placeholder="Profile Type" required />
         <textarea name="about_me" value={profile.about_me} onChange={handleChange} className="border p-2 w-full" placeholder="About Me" />

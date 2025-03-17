@@ -166,7 +166,7 @@ func (f *Follow) GetFollowers(userID int) ([]*User, error) {
 	for rows.Next() {
 		follower := &User{}
 		err = rows.Scan(
-			&follower.ID, &follower.Username, &follower.Age, &follower.Gender,
+			&follower.ID, &follower.Username, &follower.DateOfBirth, &follower.Gender,
 			&follower.FirstName, &follower.LastName, &follower.Email, &follower.Password,
 			&follower.Type, &follower.Requested, &follower.Avatar, &follower.ProfileType,
 			&follower.AboutMe, &follower.CreatedAt, &follower.UpdatedAt,
@@ -259,41 +259,13 @@ func GetFollowStatuses(userID int) (map[int]*FollowStatus, error) {
 	return followStatuses, nil
 }
 
-// func (u *User) IsFollowing(targetUserID int) (bool, error) {
-//     var exists bool
-//     err := DB.QueryRow(`
-//         SELECT EXISTS (
-//             SELECT 1 FROM follows
-//             WHERE follower_id = ? AND following_id = ? AND status = 'accepted'
-//         )`, u.ID, targetUserID).Scan(&exists)
-//     return exists, err
-// }
 
-// func GetPendingFollowRequests(userID int) ([]*Follow, error) {
-//     rows, err := DB.Query(`
-//         SELECT id, follower_id, following_id, status, created_at, updated_at
-//         FROM follows
-//         WHERE following_id = ? AND status = 'pending'`,
-//         userID)
-//     if err != nil {
-//         return nil, err
-//     }
-//     defer rows.Close()
-
-//     var follows []*Follow
-//     for rows.Next() {
-//         follow := &Follow{}
-//         err = rows.Scan(
-//             &follow.ID, &follow.FollowerID, &follow.FollowingID,
-//             &follow.Status, &follow.CreatedAt, &follow.UpdatedAt)
-//         if err != nil {
-//             return nil, err
-//         }
-//         err = follow.LoadRelations()
-//         if err != nil {
-//             return nil, err
-//         }
-//         follows = append(follows, follow)
-//     }
-//     return follows, nil
-// }
+func HasFollowRelation(followerID int, followingID int) (bool, error) {
+	var exists bool
+	err := DB.QueryRow(`
+        SELECT EXISTS (
+            SELECT 1 FROM follows 
+            WHERE (follower_id = ? AND following_id = ? AND status = 'accepted') OR (follower_id = ? AND following_id = ? AND status = 'accepted')
+        )`, followerID, followingID, followingID, followerID).Scan(&exists)
+	return exists, err
+}
