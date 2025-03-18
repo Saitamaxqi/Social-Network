@@ -11,7 +11,7 @@ func GetUserStats(userID int) (*ProfileStats, error) {
 	stats := &ProfileStats{}
 
 	// Get posts count
-	err := DB.QueryRow("SELECT COUNT(*) FROM posts WHERE user_id = ?", userID).Scan(&stats.PostsCount)
+	err := DB.QueryRow("SELECT COUNT(*) FROM posts WHERE user_id = ? AND post_id IS NULL", userID).Scan(&stats.PostsCount)
 	if err != nil {
 		return nil, err
 	}
