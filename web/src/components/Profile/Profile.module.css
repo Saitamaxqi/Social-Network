@@ -61,6 +61,40 @@
   background-color: rgba(0, 0, 0, 0.05);
 }
 
+.closeFriendButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background-color: transparent;
+  border: 1px solid #dbdbdb;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--foreground);
+  transition: all 0.2s ease;
+}
+
+.closeFriendButton:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.closeFriendActive {
+  background-color: #4CAF50;
+  color: white;
+  border-color: #4CAF50;
+}
+
+.closeFriendActive:hover {
+  background-color: #43A047;
+}
+
+.starIcon {
+  width: 16px;
+  height: 16px;
+}
+
 .statsRow {
   display: flex;
   margin-bottom: 20px;

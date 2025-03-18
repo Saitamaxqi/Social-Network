@@ -35,6 +35,8 @@ interface ProfileContextType {
   setProfileData: (profile: Profile | null) => void;
   isOwner: boolean;
   setIsOwner: (isOwner: boolean) => void;
+  isCloseFriend: boolean;
+  setIsCloseFriend: (isCloseFriend: boolean) => void;
   stats: ProfileStats | null;
   setStats: (stats: ProfileStats | null) => void;
   activity: ProfileActivity | null;
@@ -50,6 +52,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [profileData, setProfileData] = useState<Profile | null>(null);
   const [isOwner, setIsOwner] = useState<boolean>(false);
+  const [isCloseFriend, setIsCloseFriend] = useState<boolean>(false);
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [activity, setActivity] = useState<ProfileActivity | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -73,6 +76,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       if (data.user) {
         setProfileData(data.user);
         setIsOwner(data.isOwner);
+        setIsCloseFriend(data.isCloseFriend);
         setStats(data.stats);
         setActivity(data.activity);
       } else {
@@ -94,6 +98,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       // Reset state when no profile ID is set
       setProfileData(null);
       setIsOwner(false);
+      setIsCloseFriend(false);
       setStats(null);
       setActivity(null);
       setError(null);
@@ -109,6 +114,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         setProfileData,
         isOwner,
         setIsOwner,
+        isCloseFriend,
+        setIsCloseFriend,
         stats,
         setStats,
         activity,

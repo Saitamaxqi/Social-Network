@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"forum/pkg/models"
 	"net/http"
-	"strconv"
 )
 
 func CloseFriendController(w http.ResponseWriter, r *http.Request) {
@@ -13,8 +12,6 @@ func CloseFriendController(w http.ResponseWriter, r *http.Request) {
 		GetCloseFriends(w, r)
 	case "POST":
 		AddCloseFriend(w, r)
-	case "DELETE":
-		RemoveCloseFriend(w, r)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -67,47 +64,45 @@ func AddCloseFriend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create close friend relationship
+	// Check if already a close friend
+	isCloseFriend, err := friend.IsCloseFriend(user.ID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Initialize close friend relationship object
 	closeFriend := &models.CloseFriend{
 		UserID:   user.ID,
 		FriendID: requestData.FriendID,
 	}
 
-	err = closeFriend.Create()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if isCloseFriend {
+		// If already a close friend, delete the relationship
+		err = closeFriend.Delete()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		RespondWithJSON(w, http.StatusOK, map[string]interface{}{
+			"message":      "Friend removed from close friends",
+			"isCloseFriend": false,
+		})
+	} else {
+		// If not a close friend, create the relationship
+		err = closeFriend.Create()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Get the full friend details
+		closeFriend.Friend = friend
+
+		RespondWithJSON(w, http.StatusCreated, map[string]interface{}{
+			"closeFriend":   closeFriend,
+			"isCloseFriend": true,
+		})
 	}
-
-	// Get the full friend details
-	closeFriend.Friend = friend
-
-	RespondWithJSON(w, http.StatusCreated, closeFriend)
-}
-
-func RemoveCloseFriend(w http.ResponseWriter, r *http.Request) {
-	user, err := AuthUser(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
-
-	friendID, err := strconv.Atoi(r.PathValue("id"))
-	if err != nil {
-		http.Error(w, "Invalid friend ID", http.StatusBadRequest)
-		return
-	}
-
-	closeFriend := &models.CloseFriend{
-		UserID:   user.ID,
-		FriendID: friendID,
-	}
-
-	err = closeFriend.Delete()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Friend removed from close friends"})
 }

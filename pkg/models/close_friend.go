@@ -90,12 +90,73 @@ func (cf *CloseFriend) GetByUser(userID int) ([]*CloseFriend, error) {
 	return closeFriends, nil
 }
 
-func (cf *CloseFriend) IsCloseFriend(userID, friendID int) (bool, error) {
-	var count int
-	err := DB.QueryRow(`SELECT COUNT(*) FROM close_friends WHERE user_id = ? AND friend_id = ?`, 
-		userID, friendID).Scan(&count)
-	if err != nil {
-		return false, err
+// Refresh loads the close friend relationship from the database
+func (cf *CloseFriend) Refresh() error {
+	if cf.ID == 0 && (cf.UserID == 0 || cf.FriendID == 0) {
+		return errors.New("close friend relation not specified")
 	}
-	return count > 0, nil
+
+	var query string
+	var args []interface{}
+
+	if cf.ID != 0 {
+		query = `SELECT id, user_id, friend_id FROM close_friends WHERE id = ?`
+		args = []interface{}{cf.ID}
+	} else {
+		query = `SELECT id, user_id, friend_id FROM close_friends WHERE user_id = ? AND friend_id = ?`
+		args = []interface{}{cf.UserID, cf.FriendID}
+	}
+
+	err := DB.QueryRow(query, args...).Scan(&cf.ID, &cf.UserID, &cf.FriendID)
+	return err
+}
+
+// Update updates the close friend relationship in the database
+func (cf *CloseFriend) Update() error {
+	// Since close_friends table only has ID, user_id, and friend_id,
+	// and these shouldn't change, this method doesn't need to do anything
+	return nil
+}
+
+// Index returns all close friend relationships
+func (cf *CloseFriend) Index() ([]Model, error) {
+	rows, err := DB.Query(`SELECT id, user_id, friend_id FROM close_friends`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var closeFriends []Model
+	for rows.Next() {
+		friend := &CloseFriend{}
+		err = rows.Scan(&friend.ID, &friend.UserID, &friend.FriendID)
+		if err != nil {
+			return nil, err
+		}
+		closeFriends = append(closeFriends, friend)
+	}
+
+	return closeFriends, nil
+}
+
+// Exists checks if the close friend relationship exists in the database
+func (cf *CloseFriend) Exists() bool {
+	if cf.ID == 0 && (cf.UserID == 0 || cf.FriendID == 0) {
+		return false
+	}
+
+	var exists bool
+	var query string
+	var args []interface{}
+
+	if cf.ID != 0 {
+		query = `SELECT EXISTS(SELECT 1 FROM close_friends WHERE id = ?)`
+		args = []interface{}{cf.ID}
+	} else {
+		query = `SELECT EXISTS(SELECT 1 FROM close_friends WHERE user_id = ? AND friend_id = ?)`
+		args = []interface{}{cf.UserID, cf.FriendID}
+	}
+
+	_ = DB.QueryRow(query, args...).Scan(&exists)
+	return exists
 }

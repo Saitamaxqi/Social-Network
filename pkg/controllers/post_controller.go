@@ -71,8 +71,11 @@ func IndexPosts(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				continue // Skip on error
 			}
-			defer rows.Close()
-			exists = rows.Next()
+			// Use a function to properly close the rows
+			exists = func(rows *sql.Rows) bool {
+				defer rows.Close()
+				return rows.Next()
+			}(rows)
 			
 			if exists {
 				filteredPosts = append(filteredPosts, p)
@@ -83,8 +86,7 @@ func IndexPosts(w http.ResponseWriter, r *http.Request) {
 		// Close friends posts are only visible to selected users
 		if postObj.Visibility == "close_friends" {
 			// Check if user is in the author's close friends list
-			closeFriend := &models.CloseFriend{}
-			isCloseFriend, err := closeFriend.IsCloseFriend(postObj.UserID, user.ID)
+			isCloseFriend, err := user.IsCloseFriend(postObj.UserID)
 			if err != nil {
 				continue // Skip on error
 			}
@@ -291,55 +293,7 @@ func ShowPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := AuthUser(r)
-	
-	// Check visibility permissions
-	if post.Visibility != "public" {
-		if err != nil {
-			// User is not authenticated and post is not public
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		
-		// User can always see their own posts
-		if post.UserID != user.ID {
-			// For private posts, check if user follows the post author
-			if post.Visibility == "private" {
-				var isFollowing bool
-				rows, err := models.DB.Query("SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ? LIMIT 1", 
-					user.ID, post.UserID)
-				if err != nil {
-					http.Error(w, "Error checking follow status", http.StatusInternalServerError)
-					return
-				}
-				defer rows.Close()
-				isFollowing = rows.Next()
-				
-				if !isFollowing {
-					http.Error(w, "Unauthorized", http.StatusUnauthorized)
-					return
-				}
-			}
-			
-			// For close friends posts, check if user is in the author's close friends list
-			if post.Visibility == "close_friends" {
-				var isCloseFriend bool
-				rows, err := models.DB.Query("SELECT 1 FROM close_friends WHERE user_id = ? AND friend_id = ? LIMIT 1", 
-					post.UserID, user.ID)
-				if err != nil {
-					http.Error(w, "Error checking close friend status", http.StatusInternalServerError)
-					return
-				}
-				defer rows.Close()
-				isCloseFriend = rows.Next()
-				
-				if !isCloseFriend {
-					http.Error(w, "Unauthorized", http.StatusUnauthorized)
-					return
-				}
-			}
-		}
-	}
-	
+
 	if err == nil {
 		post.GetInteraction(user.ID)
 	}

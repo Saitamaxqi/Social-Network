@@ -18,6 +18,8 @@ export function ProfilePage() {
     setCurrentProfileId, 
     profileData: profile, 
     isOwner, 
+    isCloseFriend, 
+    setIsCloseFriend,
     stats, 
     activity, 
     loading, 
@@ -35,6 +37,33 @@ export function ProfilePage() {
       setCurrentProfileId(null);
     };
   }, [id, setCurrentProfileId]);
+
+  // Handle adding/removing close friend
+  const handleCloseFriendToggle = async () => {
+    if (!profile) return;
+    
+    try {
+      // Call the same endpoint for both adding and removing
+      const response = await fetch('/api/close-friends', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ friend_id: profile.id })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Update state based on the response
+        setIsCloseFriend(data.isCloseFriend);
+      } else {
+        console.error('Failed to toggle close friend status');
+      }
+    } catch (error) {
+      console.error('Error toggling close friend status:', error);
+    }
+  };
   
   if (error) return <p>{error}</p>; // Show error message if the account is private
   if (loading || !profile) return <p>Loading...</p>;
@@ -75,12 +104,23 @@ export function ProfilePage() {
           {/* Username and Edit Button */}
           <div className={styles.usernameRow}>
             <h2 className={styles.username}>{profile.username}</h2>
-            {isOwner && (
+            {isOwner ? (
               <button 
                 className={styles.editButton}
                 onClick={() => router.push("/profile")}
               >
                 Edit Profile
+              </button>
+            ) : (
+              <button 
+                className={`${styles.closeFriendButton} ${isCloseFriend ? styles.closeFriendActive : ''}`}
+                onClick={handleCloseFriendToggle}
+                title={isCloseFriend ? "Remove from close friends" : "Add to close friends"}
+              >
+                <svg className={styles.starIcon} fill="currentColor" viewBox="0 0 24 24" width="24" height="24">
+                  <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                </svg>
+                {isCloseFriend ? 'Close Friend' : 'Add to Close Friends'}
               </button>
             )}
           </div>

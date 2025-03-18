@@ -100,5 +100,4 @@ func RegisterAPIs() {
 	//close friends routes
 	GET("/close-friends", controllers.CloseFriendController, requests.DefaultRequest, middlewares.AuthMiddleware)
 	POST("/close-friends", controllers.CloseFriendController, requests.DefaultRequest, middlewares.AuthMiddleware)
-	DELETE("/close-friends/{id}", controllers.CloseFriendController, requests.DefaultRequest, middlewares.AuthMiddleware)
 }

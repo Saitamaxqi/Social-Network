@@ -527,3 +527,23 @@ func (u *User) GetActivity() (map[string]interface{}, error) {
         "following": following,
     }, nil
 }
+
+func (u *User) IsCloseFriend(viewerID int) (bool, error) {
+	// Make sure the user ID is valid
+	if u.ID == 0 {
+		return false, nil
+	}
+
+	var exists bool
+	err := DB.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1 FROM close_friends 
+			WHERE user_id = ? AND friend_id = ?
+		)`, viewerID, u.ID).Scan(&exists)
+	
+	if err != nil {
+		return false, err
+	}
+	
+	return exists, nil
+}

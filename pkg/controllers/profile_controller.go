@@ -37,13 +37,13 @@ func GetProfile(w http.ResponseWriter, r *http.Request) {
 	//Check visibility
 	visible, err := profileUser.IsProfileVisibleTo(currentUser.ID)
 	if err != nil {
-	    http.Error(w, err.Error(), http.StatusInternalServerError)
-	    return
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	if !visible {
-	    http.Error(w, "Profile is private", http.StatusForbidden)
-	    return
+		http.Error(w, "Profile is private", http.StatusForbidden)
+		return
 	}
 
 	// Get user activity
@@ -62,12 +62,20 @@ func GetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if user is a close friend
+	isCloseFriend, err := profileUser.IsCloseFriend(currentUser.ID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	// Prepare response
 	response := map[string]interface{}{
-		"user":     profileUser,
-		"activity": activity,
-		"stats":    stats,
-		"isOwner":  currentUser.ID == profileUser.ID,
+		"user":          profileUser,
+		"activity":      activity,
+		"stats":         stats,
+		"isOwner":       currentUser.ID == profileUser.ID,
+		"isCloseFriend": isCloseFriend,
 	}
 
 	RespondWithJSON(w, http.StatusOK, response)

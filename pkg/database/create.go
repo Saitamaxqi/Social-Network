@@ -22,6 +22,7 @@ func CreateTables() error {
 		&models.GroupEvent{},
 		&models.GroupEventResponse{},
 		&models.GroupMessage{},
+		&models.CloseFriend{},
 	}
 
 	for _, model := range models {
