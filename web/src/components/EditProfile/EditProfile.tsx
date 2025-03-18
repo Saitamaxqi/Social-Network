@@ -299,7 +299,7 @@ export function EditProfilePage() {
             <div className="flex items-center gap-4">
               <div className="relative w-20 h-20 rounded-full overflow-hidden bg-gray-700">
                 {profile.avatar && profile.avatar.Valid ? (
-                  <img src={profile.avatar.String} alt="Avatar" className="w-full h-full object-cover" />
+                  <img src={`http://localhost:8080/${profile.avatar.String}`} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-400">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
