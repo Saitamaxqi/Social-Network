@@ -82,6 +82,18 @@ func GetProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateProfile(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("UpdateProfile called with method:", r.Method)
+
+	// Parse multipart form data
+	parseErr := r.ParseMultipartForm(10 << 20) // 10 MB max memory
+	if parseErr != nil {
+		parseErr = r.ParseForm()
+		if parseErr != nil {
+			http.Error(w, "Error parsing form data", http.StatusBadRequest)
+			return
+		}
+	}
+
 	currentUser, err := AuthUser(r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -90,11 +102,37 @@ func UpdateProfile(w http.ResponseWriter, r *http.Request) {
 
 	// Parse form values
 	dateOfBirthStr := r.FormValue("date_of_birth")
-	// Validate date format
-	dateOfBirth, err := time.Parse("2006-01-02", dateOfBirthStr)
-	if err != nil {
-		http.Error(w, "Invalid date of birth format. Please use YYYY-MM-DD", http.StatusBadRequest)
-		return
+
+	// Try different date formats
+	var dateOfBirth time.Time
+
+	// Try standard ISO format
+	if dateOfBirthStr != "" {
+		// Try different date formats
+		formats := []string{
+			"2006-01-02",           // ISO format
+			"2006-01-02T15:04:05Z", // ISO with time
+			"01/02/2006",           // US format
+			"02/01/2006",           // UK format
+		}
+
+		parsed := false
+		var parseErr error
+		for _, format := range formats {
+			dateOfBirth, parseErr = time.Parse(format, dateOfBirthStr)
+			if parseErr == nil {
+				parsed = true
+				break
+			}
+		}
+
+		if !parsed {
+			http.Error(w, "Invalid date of birth format. Please use YYYY-MM-DD", http.StatusBadRequest)
+			return
+		}
+	} else {
+		// If date is empty, keep the current value
+		dateOfBirth = currentUser.DateOfBirth
 	}
 
 	// Update all user fields
