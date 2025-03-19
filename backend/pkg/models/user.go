@@ -505,24 +505,84 @@ func (u *User) IsFollowedBy(userID int) (bool, error) {
 }
 
 // Add method to get user activity
-func (u *User) GetActivity() (map[string]interface{}, error) {
-    posts, err := u.Posts()
+func (ProfileUser *User) GetActivity(CurrentUser *User) (map[string]interface{}, error) {
+    posts, err := ProfileUser.Posts()
     if err != nil {
         return nil, err
     }
 
-    followers, err := u.GetFollowers()
+		// Filter posts based on visibility settings
+		var filteredPosts []*Post
+		for _, p := range posts {
+			if p.Visibility == "group" {
+				continue
+			}
+			// Public posts are visible to everyone
+			if p.Visibility == "public" {
+				filteredPosts = append(filteredPosts, p)
+				continue
+			}
+			
+			// If user is not authenticated, they can only see public posts
+			if CurrentUser == nil {
+				continue
+			}
+			
+			// User can always see their own posts
+			if p.UserID == CurrentUser.ID {
+				filteredPosts = append(filteredPosts, p)
+				continue
+			}
+			
+			// Private posts are visible to followers
+			if p.Visibility == "private" {
+				// Check if the user follows the post author
+				var exists bool
+				rows, err := DB.Query("SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ? LIMIT 1", 
+					CurrentUser.ID, p.UserID)
+				if err != nil {
+					continue // Skip on error
+				}
+				// Use a function to properly close the rows
+				exists = func(rows *sql.Rows) bool {
+					defer rows.Close()
+					return rows.Next()
+				}(rows)
+				
+				if exists {
+					filteredPosts = append(filteredPosts, p)
+				}
+				continue
+			}
+			
+			// Close friends posts are only visible to selected users
+			if p.Visibility == "close_friends" {
+				// Check if user is in the author's close friends list
+				isCloseFriend, err := CurrentUser.IsCloseFriend(p.UserID)
+				fmt.Println("Close friend status:", isCloseFriend)
+				if err != nil {
+					fmt.Println("Error checking close friend status:", err)
+					continue // Skip on error
+				}
+				
+				if isCloseFriend {
+					filteredPosts = append(filteredPosts, p)
+				}
+			}
+		}
+
+    followers, err := ProfileUser.GetFollowers()
     if err != nil {
         return nil, err
     }
 
-    following, err := u.GetFollowing()
+    following, err := ProfileUser.GetFollowing()
     if err != nil {
         return nil, err
     }
 
     return map[string]interface{}{
-        "posts":     posts,
+        "posts":     filteredPosts,
         "followers": followers,
         "following": following,
     }, nil

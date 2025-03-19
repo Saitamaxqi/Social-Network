@@ -47,7 +47,7 @@ func GetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user activity
-	activity, err := profileUser.GetActivity()
+	activity, err := profileUser.GetActivity(currentUser)
 	if err != nil {
 		fmt.Println("Error getting activity:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
