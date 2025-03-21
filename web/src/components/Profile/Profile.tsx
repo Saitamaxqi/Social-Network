@@ -65,7 +65,7 @@ export function ProfilePage() {
     }
   };
   
-  if (error) return <p>{error}</p>; // Show error message if the account is private
+  if (error) return <p>Account is private, you cannot view this profile until you follow him</p>; // Show error message if the account is private
   if (loading || !profile) return <p>Loading...</p>;
 
   return (
