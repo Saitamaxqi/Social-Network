@@ -484,20 +484,20 @@ export default function Post({ groupId, scrollToPostId }: PostProps) {
     return (
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 min-h-[calc(100vh-7rem)]">
         <div className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
-          <h2 className="text-xl sm:text-2xl font-bold text-white">Posts</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-white">{groupId ? 'Group Posts' : 'Posts'}</h2>
           {user ? (
             <button 
-              onClick={() => router.push('/posts/create')}
+              onClick={() => router.push(groupId ? `/groups/${groupId}/posts/create` : '/posts/create')}
               className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-md flex items-center font-bold text-sm sm:text-base w-full sm:w-auto justify-center"
             >
-              + Create Post
+              + Create {groupId ? 'Group Post' : 'Post'}
             </button>
           ) : (
             <button 
               onClick={() => router.push('/auth/login')}
               className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-md flex items-center font-bold text-sm sm:text-base w-full sm:w-auto justify-center"
             >
-              Login to Create Post
+              Login to Create {groupId ? 'Group Post' : 'Post'}
             </button>
           )}
         </div>
@@ -513,10 +513,10 @@ export default function Post({ groupId, scrollToPostId }: PostProps) {
             <p className="text-gray-300 mb-4">No posts found.</p>
             {user && (
               <button
-                onClick={() => router.push('/posts/create')}
+                onClick={() => router.push(groupId ? `/groups/${groupId}/posts/create` : '/posts/create')}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md inline-flex items-center"
               >
-                Create your first post
+                Create your first {groupId ? 'group post' : 'post'}
               </button>
             )}
           </div>
@@ -528,20 +528,20 @@ export default function Post({ groupId, scrollToPostId }: PostProps) {
   return (
     <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 min-h-[calc(100vh-7rem)]">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
-        <h2 className="text-xl sm:text-2xl font-bold text-white">Posts</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-white">{groupId ? 'Group Posts' : 'Posts'}</h2>
         {user ? (
           <button 
-            onClick={() => router.push('/posts/create')}
+            onClick={() => router.push(groupId ? `/groups/${groupId}/posts/create` : '/posts/create')}
             className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-md flex items-center font-bold text-sm sm:text-base w-full sm:w-auto justify-center"
           >
-            + Create Post
+            + Create {groupId ? 'Group Post' : 'Post'}
           </button>
         ) : (
           <button 
             onClick={() => router.push('/auth/login')}
             className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-md flex items-center font-bold text-sm sm:text-base w-full sm:w-auto justify-center"
           >
-            Login to Create Post
+            Login to Create {groupId ? 'Group Post' : 'Post'}
           </button>
         )}
       </div>

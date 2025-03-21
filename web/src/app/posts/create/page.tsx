@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import MainLayout from '@/components/Layout/MainLayout';
-import Image from 'next/image';
 
 interface Category {
   id: string;
