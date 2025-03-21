@@ -67,7 +67,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/profile/${currentProfileId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/profile/${currentProfileId}`,
         { credentials: "include" }
       );
 
