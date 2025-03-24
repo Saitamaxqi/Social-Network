@@ -237,8 +237,9 @@ const ChatInterface: React.FC = () => {
 
     const handleMessage = (event: MessageEvent) => {
       const data = JSON.parse(event.data);
+      console.log('WebSocket message received:', data);
       
-      // Handle chat messages
+      // Handle direct chat messages
       if (data.type === 'message' && data.message && currentUser) {
         const newMessage: Message = {
           id: Date.now(), // Temporary ID for new messages
@@ -260,24 +261,55 @@ const ChatInterface: React.FC = () => {
           };
         }
         
-        // Add group_id for group messages
-        if (data.message.group_id) {
-          newMessage.group_id = data.message.group_id;
-          newMessage.group = {
+        // Add message if it's for the current direct chat
+        if (chatType === 'direct' && selectedUser && 
+            ((newMessage.sender_id === selectedUser.id && newMessage.recipient_id === currentUser.id) || 
+             (newMessage.sender_id === currentUser.id && newMessage.recipient_id === selectedUser.id))) {
+          console.log('Adding direct message to chat');
+          setMessages(prev => [...prev, newMessage]);
+          
+          // Scroll to bottom when receiving a new message
+          setTimeout(() => {
+            if (messagesContainerRef.current) {
+              messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+            }
+          }, 100);
+        }
+      }
+      
+      // Handle group chat messages
+      if (data.type === 'group_message' && data.message && currentUser) {
+        console.log('Received group message:', data.message);
+        
+        const newMessage: Message = {
+          id: Date.now(), // Temporary ID for new messages
+          content: data.message.content,
+          sender_id: data.message.sender.id,
+          group_id: data.message.group_id,
+          created_at: data.message.created_at,
+          sender: {
+            id: data.message.sender.id,
+            username: data.message.sender.username
+          },
+          group: {
             id: data.message.group_id,
             title: data.message.group?.title || ''
-          };
-        }
-
-        // Add message if it's for the current chat
-        if (
-          (chatType === 'direct' && selectedUser && 
-            ((newMessage.sender_id === selectedUser.id && newMessage.recipient_id === currentUser.id) || 
-             (newMessage.sender_id === currentUser.id && newMessage.recipient_id === selectedUser.id)))
-          ||
-          (chatType === 'group' && selectedGroup && newMessage.group_id === selectedGroup.id)
-        ) {
+          }
+        };
+        
+        // Add message if it's for the current group chat
+        if (chatType === 'group' && selectedGroup && newMessage.group_id === selectedGroup.id) {
+          console.log('Adding group message to chat');
           setMessages(prev => [...prev, newMessage]);
+          
+          // Scroll to bottom when receiving a new message
+          setTimeout(() => {
+            if (messagesContainerRef.current) {
+              messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+            }
+          }, 100);
+        } else {
+          console.log('Group message not for current chat');
         }
       }
     };
@@ -287,7 +319,7 @@ const ChatInterface: React.FC = () => {
     return () => {
       socket.removeEventListener('message', handleMessage);
     };
-  }, [socket, selectedUser, currentUser]);
+  }, [socket, selectedUser, selectedGroup, currentUser, chatType]);
 
   /**
    * Determine chat type and update state when URL parameters change

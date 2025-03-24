@@ -1,0 +1,31 @@
+# Start from the official Node.js base image
+FROM node:18-alpine
+
+# Set the Current Working Directory inside the container
+WORKDIR /
+
+# Copy package.json and package-lock.json (if available)
+COPY ./web/package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy the frontend source code
+COPY ./web .
+
+# Copy Docker-specific environment variables
+COPY ./web/.env.docker ./.env.local
+
+# Build the application for production (uncomment if needed)
+# RUN npm run build
+
+# Metadata
+LABEL author="Ahmed"
+LABEL version="1.0"
+LABEL description="Social Network Frontend"
+
+# Expose the port the app runs on
+EXPOSE 3000
+
+# Command to run the application in development mode
+CMD ["npm", "run", "dev"]

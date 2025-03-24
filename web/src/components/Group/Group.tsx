@@ -71,7 +71,14 @@ export default function Group() {
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
   const { user } = useAuth();
-  const { setCurrentGroupId, setGroupMembers } = useGroup();
+  const {
+    currentGroupId,
+    setCurrentGroupId,
+    showGroupMembersOnly,
+    setShowGroupMembersOnly,
+    groupMembers,
+    setGroupMembers
+  } = useGroup();
 
   useEffect(() => {
     // Set the current group ID in context when component mounts
@@ -236,16 +243,8 @@ export default function Group() {
         
         {/* Action Button */}
         <div className="flex flex-col justify-center items-center">   
-          {user && isMember && parseInt(user.id) !== group.creator?.id && (
-            <div className="px-6 py-3 bg-green-600/30 text-green-200 rounded-lg flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              Member
-            </div>
-          )}
           
-          {user && isMember && parseInt(user.id) === group.creator?.id && (
+          {user && isMember && (
             <button
               onClick={() => setShowInviteModal(true)}
               className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2 shadow-lg"

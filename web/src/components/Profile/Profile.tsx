@@ -1,176 +1,268 @@
 //this is the final work
 
-import { useParams , useRouter} from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-
-interface Profile {
-  id: number;
-  username: string;
-  age: number;
-  gender: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  profile_type: string;
-  about_me?: string;
-  avatar: { String: string; Valid: boolean };
-}
-
-interface ProfileStats {
-  posts_count: number;
-  followers_count: number;
-  following_count: number;
-}
+import { useProfile } from "@/contexts/ProfileContext";
+import Image from "next/image";
+import styles from "./Profile.module.css";
+import Link from "next/link";
+import { formatDistanceToNow } from 'date-fns';
 
 export function ProfilePage() {
   const { id } = useParams(); // Get dynamic route parameter
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter(); // Initialize useRouter
-  const [isOwner, setIsOwner] = useState<boolean | null>(null);
-  const [stats, setStats] = useState<ProfileStats | null>(null);
-  const [activity, setActivity] = useState<{ followers: any[]; following: any[] } | null>(null);
   const [showPopup, setShowPopup] = useState(false);
-const [popupType, setPopupType] = useState<"followers" | "following" | null>(null);
+  const [popupType, setPopupType] = useState<"followers" | "following" | null>(null);
+  
+  const { 
+    setCurrentProfileId, 
+    profileData: profile, 
+    isOwner, 
+    isCloseFriend, 
+    setIsCloseFriend,
+    stats, 
+    activity, 
+    loading, 
+    error 
+  } = useProfile();
 
-    useEffect(() => {
-    async function fetchProfile() {
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/profile/${id}`,
-          { credentials: "include" }
-        );
-
-        console.log("helllllo")
-        const data = await response.json();
-        
-        // if (data.user.profile_type === "private" && !response.ok ) {
-        //     setError("This account is private.");
-        // }
-
-        // if (!response.ok) throw new Error("Failed to fetch profile");
-        if (data.user) {
-          setProfile(data.user);
-          setIsOwner(data.isOwner);
-        setStats(data.stats);  
-        setActivity(data.activity); 
-        } else {
-          throw new Error("Invalid API response: Missing user object");
-        }
-      } catch (err) {
-            setError("This account is private");
-        console.error(err);
-      }
-
+  // Set the current profile ID when the component mounts or ID changes
+  useEffect(() => {
+    if (id) {
+      setCurrentProfileId(id.toString());
     }
+    
+    // Clean up when component unmounts
+    return () => {
+      setCurrentProfileId(null);
+    };
+  }, [id, setCurrentProfileId]);
 
-    if (id) fetchProfile();
-  }, [id]);
-  if (error) return <p>{error}</p>; // Show error message if the account is private
-  if (!profile) return <p>Loading...</p>;
+  // Handle adding/removing close friend
+  const handleCloseFriendToggle = async () => {
+    if (!profile) return;
+    
+    try {
+      // Call the same endpoint for both adding and removing
+      const response = await fetch('/api/close-friends', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ friend_id: profile.id })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Update state based on the response
+        setIsCloseFriend(data.isCloseFriend);
+      } else {
+        console.error('Failed to toggle close friend status');
+      }
+    } catch (error) {
+      console.error('Error toggling close friend status:', error);
+    }
+  };
+  
+  if (error) return <p>Account is private, you cannot view this profile until you follow him</p>; // Show error message if the account is private
+  if (loading || !profile) return <p>Loading...</p>;
 
   return (
-    <div>
-     {/* <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full text-center"> */}
-        {/* <div >
-        {profile.avatar.Valid && (
-        <img
-          src= {profile.avatar.String}
-          alt="User Avatar"
-          className="w-24 h-24 mx-auto rounded-full mb-4"
-        />
-      )}
-        </div> */}
-         <div>
-                      {profile.avatar?.Valid  && (
-                        <img
-                          src={`http://localhost:8080${profile.avatar.String}`}
-                          alt={profile.username}
-                          width={200}
-                          height={200}
-                        />
-                      )}
-                    </div>
-      <h1>Profile Page</h1>
-      <p>ID: {profile.id}</p>
-      <h1>
-        {profile.first_name} {profile.last_name}
-      </h1>
-      <p >@{profile.username}</p>
-      <div>
-          <p><strong>Age:</strong> {profile.age}</p>
-          <p><strong>Gender:</strong> {profile.gender}</p>
-          <p><strong>Email:</strong> {profile.email}</p>
-          <p><strong>Profile Type:</strong> {profile.profile_type}</p>
+    <div className={styles.profileContainer}>
+      {/* Profile Header */}
+      <div className={styles.profileHeader}>
+        {/* Avatar */}
+        <div className={styles.avatarContainer}>
+          <div className={styles.avatar}>
+            {profile.avatar?.Valid ? (
+              profile.avatar.String.startsWith('http') ? (
+                <Image
+                  src={profile.avatar.String}
+                  alt={profile.username}
+                  width={150}
+                  height={150}
+                  style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                />
+              ) : (
+                <img
+                  src={`http://localhost:8080${profile.avatar.String}`}
+                  alt={profile.username}
+                  width={150}
+                  height={150}
+                  style={{ objectFit: 'cover', width: '100%', height: '100%', borderRadius: '50%' }}
+                />
+              )
+            ) : (
+              <span>{profile.username[0].toUpperCase()}</span>
+            )}
+          </div>
+        </div>
 
-          {profile.about_me && (
-            <p className="mt-2"><strong>About Me:</strong> {profile.about_me}</p>
+        {/* Profile Info */}
+        <div className={styles.profileInfo}>
+          {/* Username and Edit Button */}
+          <div className={styles.usernameRow}>
+            <h2 className={styles.username}>{profile.username}</h2>
+            {isOwner ? (
+              <button 
+                className={styles.editButton}
+                onClick={() => router.push("/profile")}
+              >
+                Edit Profile
+              </button>
+            ) : (
+              <button 
+                className={`${styles.closeFriendButton} ${isCloseFriend ? styles.closeFriendActive : ''}`}
+                onClick={handleCloseFriendToggle}
+                title={isCloseFriend ? "Remove from close friends" : "Add to close friends"}
+              >
+                <svg className={styles.starIcon} fill="currentColor" viewBox="0 0 24 24" width="24" height="24">
+                  <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                </svg>
+                {isCloseFriend ? 'Close Friend' : 'Add to Close Friends'}
+              </button>
+            )}
+          </div>
+
+          {/* Stats Row */}
+          <div className={styles.statsRow}>
+            <div className={styles.stat}>
+              <span className={styles.statValue}>{stats?.posts_count ?? 0}</span> posts
+            </div>
+            <div 
+              className={styles.stat} 
+              onClick={() => { setPopupType("followers"); setShowPopup(true); }}
+            >
+              <span className={styles.statValue}>{stats?.followers_count ?? 0}</span> followers
+            </div>
+            <div 
+              className={styles.stat}
+              onClick={() => { setPopupType("following"); setShowPopup(true); }}
+            >
+              <span className={styles.statValue}>{stats?.following_count ?? 0}</span> following
+            </div>
+          </div>
+
+          {/* Bio Section */}
+          <div className={styles.bioSection}>
+            <div className={styles.fullName}>
+              {profile.first_name} {profile.last_name}
+            </div>
+            {profile.about_me && (
+              <div className={styles.bio}>{profile.about_me}</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Posts Section */}
+      <div className={styles.postsSection}>
+        <div className={styles.postsHeader}>
+          <div className={`${styles.postsHeaderItem} ${styles.postsHeaderItemActive}`}>
+            <svg aria-label="Posts" color="currentColor" fill="currentColor" height="12" role="img" viewBox="0 0 24 24" width="12">
+              <rect fill="none" height="18" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" width="18" x="3" y="3"></rect>
+              <line fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" x1="9.015" x2="9.015" y1="3" y2="21"></line>
+              <line fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" x1="14.985" x2="14.985" y1="3" y2="21"></line>
+              <line fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" x1="21" x2="3" y1="9.015" y2="9.015"></line>
+              <line fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" x1="21" x2="3" y1="14.985" y2="14.985"></line>
+            </svg>
+            <span style={{ marginLeft: '6px' }}>POSTS</span>
+          </div>
+        </div>
+
+        {/* Posts Grid */}
+        <div className={styles.postsGrid}>
+          {activity?.posts && activity.posts.length > 0 ? (
+            activity.posts.map((post: any) => (
+              <div 
+                key={post.id} 
+                className={styles.postCard} 
+                onClick={() => router.push(`/posts?scrollTo=${post.id}`)}
+              >
+                {/* Simple Post Content */}
+                <div className={styles.postContent}>
+                  {post.title && <h3 className={styles.postTitle}>{post.title}</h3>}
+                  
+                  {/* Creation Time */}
+                  {post.created_at && (
+                    <div className={styles.postTime}>
+                      {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+                    </div>
+                  )}
+                  
+                  {/* Content Preview */}
+                  {post.content && (
+                    <p className={styles.postBody}>
+                      {post.content.length > 100 
+                        ? `${post.content.substring(0, 100)}...` 
+                        : post.content
+                      }
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className={styles.noPostsMessage}>
+              No posts yet
+            </div>
           )}
         </div>
-        {isOwner && ( 
-  <button 
-    onClick={() => router.push("/profile")}
-  >
-    Edit Profile
-  </button>
-)}
+      </div>
 
-         {/* {isOwner ? <p>This is your profile</p> : <p>This is someone else's profile</p>} */}
-        
-         {/* <div>
-  <p>Posts: {stats?.posts_count ?? 0}</p>
-  <p>Followers: {stats?.followers_count ?? 0}</p>
-  <p>Following: {stats?.following_count ?? 0}</p>
-</div> */}
-<div>
-  <p onClick={() => { setPopupType("followers"); setShowPopup(true); }}>
-    Followers: {stats?.followers_count ?? 0}
-  </p>
-  
-  <p onClick={() => { setPopupType("following"); setShowPopup(true); }}>
-    Following: {stats?.following_count ?? 0}
-  </p>
-</div>
-{showPopup && popupType && (
-  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-    <div className=" p-4 rounded shadow-lg">
-      <h2>{popupType === "followers" ? "Followers" : "Following"}</h2>
+      {/* Followers/Following Modal */}
+      {showPopup && popupType && (
+        <div className={styles.modalOverlay} onClick={() => setShowPopup(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.modalTitle}>
+                {popupType === "followers" ? "Followers" : "Following"}
+              </h3>
+              <button className={styles.closeButton} onClick={() => setShowPopup(false)}>
+                ×
+              </button>
+            </div>
 
-      {/* Check if activity[popupType] is an array before accessing .length */}
-      {Array.isArray(activity?.[popupType]) && activity[popupType].length > 0 ? (
-        <ul>
-          {activity[popupType].map((user) => (
-            <li key={user.id}>@{user.username}</li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-gray-500">
-          {popupType === "followers" ? "No followers yet." : "Not following anyone yet."}
-        </p>
+            <div className={styles.userList}>
+              {popupType && activity && Array.isArray(activity[popupType]) && activity[popupType].length > 0 ? (
+                activity[popupType].map((user: {id: number, username: string, avatar?: {String: string, Valid: boolean}}) => (
+                  <Link href={`/profile/${user.id}`} key={user.id} className={styles.userItem}>
+                    {user.avatar?.Valid ? (
+                      user.avatar.String.startsWith('http') ? (
+                        <Image 
+                          src={user.avatar.String}
+                          alt={user.username}
+                          width={32}
+                          height={32}
+                          className={styles.userAvatar}
+                        />
+                      ) : (
+                        <img 
+                          src={`http://localhost:8080${user.avatar.String}`}
+                          alt={user.username}
+                          width={32}
+                          height={32}
+                          className={styles.userAvatar}
+                        />
+                      )
+                    ) : (
+                      <div className={styles.userAvatarPlaceholder}>
+                        {user.username[0].toUpperCase()}
+                      </div>
+                    )}
+                    <span className={styles.userName}>{user.username}</span>
+                  </Link>
+                ))
+              ) : (
+                <p>
+                  {popupType === "followers" ? "No followers yet." : "Not following anyone yet."}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
       )}
-
-      <button onClick={() => setShowPopup(false)}>Close</button>
     </div>
-  </div>
-)}
-
-
-    </div>
-    
   );
 }
-
-// function isOwner(response) {
-
-//   if (response.isOwner) {
-//     return (
-//       <button 
-//                   onClick={() =>             router.push("/profile") }
-//         >
-          
-//           Edit Profile
-//         </button> 
-
-//     )
-//   }
-// }

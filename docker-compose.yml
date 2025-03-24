@@ -1,0 +1,38 @@
+version: '3'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: DockerBackend
+    container_name: social-network-backend
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/backend
+      - ./data:/data
+    environment:
+      - PWD=/
+    networks:
+      - social-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: DockerFrontend
+    container_name: social-network-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./web:/web
+      - ./web/node_modules:/node_modules
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8080/api
+    depends_on:
+      - backend
+    networks:
+      - social-network
+
+networks:
+  social-network:
+    driver: bridge

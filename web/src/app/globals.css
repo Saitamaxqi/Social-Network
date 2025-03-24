@@ -51,6 +51,18 @@ body {
   background: var(--scrollbar-thumb-hover);
 }
 
+/* Post highlight animation */
+@keyframes highlightAnimation {
+  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+  70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+.highlight-post {
+  animation: highlightAnimation 2s ease-in-out;
+  border-color: #3b82f6 !important; /* Blue-500 */
+}
+
 /* Firefox scrollbar styling */
 * {
   scrollbar-width: thin;
