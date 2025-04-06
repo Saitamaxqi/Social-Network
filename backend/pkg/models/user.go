@@ -568,6 +568,27 @@ func (ProfileUser *User) GetActivity(CurrentUser *User) (map[string]interface{},
 				if isCloseFriend {
 					filteredPosts = append(filteredPosts, p)
 				}
+				continue
+			}
+
+			// Super private posts are only visible to specifically selected users
+			if p.Visibility == "super_private" {
+				// Check if user is in the post's allowed users list
+				var exists bool
+				err := DB.QueryRow(`
+					SELECT EXISTS (
+						SELECT 1 FROM post_permissions 
+						WHERE post_id = ? AND user_id = ?
+					)`, p.ID, CurrentUser.ID).Scan(&exists)
+				
+				if err != nil {
+					fmt.Println("Error checking post permission:", err)
+					continue // Skip on error
+				}
+				
+				if exists {
+					filteredPosts = append(filteredPosts, p)
+				}
 			}
 		}
 

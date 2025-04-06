@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { GlobeAltIcon, LockClosedIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { GlobeAltIcon, LockClosedIcon, UserGroupIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 
 interface Category {
   id: string;
@@ -572,6 +572,9 @@ export default function Post({ groupId, scrollToPostId }: PostProps) {
                       )}
                       {post.visibility === 'close_friends' && (
                         <UserGroupIcon className="h-4 w-4 text-blue-400" />
+                      )}
+                      {post.visibility === 'super_private' && (
+                        <ShieldCheckIcon className="h-4 w-4 text-purple-400" />
                       )}
                     </span>
                   )}

@@ -1,9 +1,9 @@
 package controllers
 
 import (
+	"net/http"
 	"social/backend/pkg/consts"
 	"social/backend/pkg/models"
-	"net/http"
 	"strconv"
 )
 

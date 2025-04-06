@@ -94,6 +94,27 @@ func IndexPosts(w http.ResponseWriter, r *http.Request) {
 			if isCloseFriend {
 				filteredPosts = append(filteredPosts, p)
 			}
+			continue
+		}
+
+		// Super private posts are only visible to specifically permitted users
+		if postObj.Visibility == "super_private" {
+			// Check if user has explicit permission to view this post
+			var hasPermission bool
+			rows, err := models.DB.Query("SELECT 1 FROM post_permissions WHERE post_id = ? AND user_id = ? LIMIT 1",
+				postObj.ID, user.ID)
+			if err != nil {
+				continue // Skip on error
+			}
+			// Use a function to properly close the rows
+			hasPermission = func(rows *sql.Rows) bool {
+				defer rows.Close()
+				return rows.Next()
+			}(rows)
+			
+			if hasPermission {
+				filteredPosts = append(filteredPosts, p)
+			}
 		}
 	}
 
@@ -114,8 +135,8 @@ func CreatePost(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	// Validate visibility value
-	if visibility != "public" && visibility != "private" && visibility != "close_friends" {
-		http.Error(w, "Invalid visibility setting. Must be 'public', 'private', or 'close_friends'", http.StatusBadRequest)
+	if visibility != "public" && visibility != "private" && visibility != "close_friends" && visibility != "super_private" {
+		http.Error(w, "Invalid visibility setting. Must be 'public', 'private', 'close_friends', or 'super_private'", http.StatusBadRequest)
 		return
 	}
 
@@ -164,6 +185,34 @@ func CreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Handle super_private post permissions if specified
+	if visibility == "super_private" {
+		// Get the allowed users from the form
+		allowedUsersStr := r.FormValue("allowed_users")
+		if allowedUsersStr != "" {
+			allowedUserIDs := []int{}
+			for _, idStr := range strings.Split(allowedUsersStr, ",") {
+				id, err := strconv.Atoi(idStr)
+				if err != nil {
+					continue
+				}
+				allowedUserIDs = append(allowedUserIDs, id)
+			}
+
+			// Save permissions for each allowed user
+			for _, userID := range allowedUserIDs {
+				_, err = models.DB.Exec(
+					"INSERT INTO post_permissions (post_id, user_id) VALUES (?, ?)",
+					post.ID, userID,
+				)
+				if err != nil {
+					// Log error but continue
+					fmt.Printf("Error adding permission for user %d: %v\n", userID, err)
+				}
+			}
+		}
+	}
+
 	RespondWithJSON(w, http.StatusCreated, post)
 }
 
@@ -195,10 +244,56 @@ func UpdatePost(w http.ResponseWriter, r *http.Request) {
 
 	post.Title = r.FormValue("title")
 	post.Body = r.FormValue("body")
+	
+	// Check if visibility is being updated
+	newVisibility := r.FormValue("visibility")
+	if newVisibility != "" {
+		// Validate visibility value
+		if newVisibility != "public" && newVisibility != "private" && newVisibility != "close_friends" && newVisibility != "super_private" {
+			http.Error(w, "Invalid visibility setting. Must be 'public', 'private', 'close_friends', or 'super_private'", http.StatusBadRequest)
+			return
+		}
+		post.Visibility = newVisibility
+	}
+	
 	err = post.Update()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	
+	// If visibility is super_private, update permissions
+	if post.Visibility == "super_private" {
+		allowedUsersStr := r.FormValue("allowed_users")
+		if allowedUsersStr != "" {
+			// First, remove all existing permissions
+			_, err = models.DB.Exec("DELETE FROM post_permissions WHERE post_id = ?", post.ID)
+			if err != nil {
+				fmt.Printf("Error removing existing permissions: %v\n", err)
+			}
+			
+			// Parse and add new permissions
+			allowedUserIDs := []int{}
+			for _, idStr := range strings.Split(allowedUsersStr, ",") {
+				id, err := strconv.Atoi(idStr)
+				if err != nil {
+					continue
+				}
+				allowedUserIDs = append(allowedUserIDs, id)
+			}
+
+			// Save permissions for each allowed user
+			for _, userID := range allowedUserIDs {
+				_, err = models.DB.Exec(
+					"INSERT INTO post_permissions (post_id, user_id) VALUES (?, ?)",
+					post.ID, userID,
+				)
+				if err != nil {
+					// Log error but continue
+					fmt.Printf("Error adding permission for user %d: %v\n", userID, err)
+				}
+			}
+		}
 	}
 
 	// Store media file if exists
