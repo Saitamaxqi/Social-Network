@@ -124,6 +124,43 @@ export default function Post({ groupId, scrollToPostId }: PostProps) {
     }
 
     try {
+      // Find the current post to get its current state
+      const currentPost = posts.find(post => post.id === postId);
+      if (!currentPost) return;
+
+      // Determine the new interaction state
+      let newInteraction = type === 'like' ? 1 : -1;
+      // If the user is clicking the same button again, toggle it off
+      if (currentPost.interaction === newInteraction) {
+        newInteraction = 0;
+      }
+
+      // Calculate optimistic update values
+      let newLikes = currentPost.likes || 0;
+      let newDislikes = currentPost.dislikes || 0;
+      
+      // Adjust counts based on previous and new interaction
+      if (currentPost.interaction === 1) newLikes--; // Remove previous like
+      if (currentPost.interaction === -1) newDislikes--; // Remove previous dislike
+      if (newInteraction === 1) newLikes++; // Add new like
+      if (newInteraction === -1) newDislikes++; // Add new dislike
+
+      // Optimistically update the UI
+      setPosts(prevPosts => 
+        prevPosts.map(post => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              likes: newLikes,
+              dislikes: newDislikes,
+              interaction: newInteraction
+            };
+          }
+          return post;
+        })
+      );
+
+      // Send the interaction to the server
       const response = await fetch(`/api/posts/${postId}/interact`, {
         method: 'PUT',
         headers: {
@@ -141,7 +178,7 @@ export default function Post({ groupId, scrollToPostId }: PostProps) {
 
       const data = await response.json();
       
-      // Update the posts state with the new interaction data
+      // Update with server data to ensure accuracy
       setPosts(prevPosts => 
         prevPosts.map(post => {
           if (post.id === postId) {
@@ -154,11 +191,11 @@ export default function Post({ groupId, scrollToPostId }: PostProps) {
               console.error('Error storing interaction in localStorage:', err);
             }
             
-            // Return updated post with new interaction data
+            // Return updated post with server data
             return {
               ...post,
-              likes: data.likes || post.likes,
-              dislikes: data.dislikes || post.dislikes,
+              likes: data.likes !== undefined ? data.likes : post.likes,
+              dislikes: data.dislikes !== undefined ? data.dislikes : post.dislikes,
               interaction: data.interaction
             };
           }
@@ -167,6 +204,8 @@ export default function Post({ groupId, scrollToPostId }: PostProps) {
       );
     } catch (error) {
       console.error('Error interacting with post:', error);
+      // Refresh posts to get the correct state in case of error
+      fetchPosts();
     }
   };
 

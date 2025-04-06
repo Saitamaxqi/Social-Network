@@ -480,7 +480,7 @@ func InteractPost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
+if post.UserID != user.ID {
 	notification := &models.Notification{
 		UserID:   post.UserID,
 		Text:     fmt.Sprintf("%s %s your post", user.Username, text),
@@ -489,7 +489,7 @@ func InteractPost(w http.ResponseWriter, r *http.Request) {
 		LinkID:   postID,
 		Date:     time.Now(),
 	}
-	
+
 
 
 	err = notification.Create()
@@ -507,6 +507,7 @@ func InteractPost(w http.ResponseWriter, r *http.Request) {
 		"type": "notification",
 		"notification": notification,
 	})
+}
 
 	RespondWithJSON(w, http.StatusOK, map[string]interface{}{"interaction": interaction})
 }
@@ -570,6 +571,8 @@ func CommentPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if post.UserID != user.ID {
+
 	notification := &models.Notification{
 		UserID:   post.UserID,
 		Text:     fmt.Sprintf("%s commented on your post", user.Username),
@@ -596,6 +599,7 @@ func CommentPost(w http.ResponseWriter, r *http.Request) {
 		"type": "notification",
 		"notification": notification,
 	})
+}
 
 	RespondWithJSON(w, http.StatusOK, comment)
 }
