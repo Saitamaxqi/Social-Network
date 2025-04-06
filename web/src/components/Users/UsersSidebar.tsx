@@ -8,6 +8,7 @@ import styles from './UsersSidebar.module.css';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useGroup } from '@/contexts/GroupContext';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 
 interface ChatUser {
   id: number;
@@ -69,6 +70,7 @@ export default function UsersSidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const { currentGroupId, showGroupMembersOnly, setShowGroupMembersOnly, groupMembers } = useGroup();
+  const { socket } = useWebSocket();
   
   // Check if we're on a group page
   const isGroupPage = pathname?.startsWith(`/groups/${currentGroupId}`) || false;
@@ -97,6 +99,49 @@ export default function UsersSidebar() {
 
     fetchChats();
   }, [user]);
+
+  // WebSocket event listener for real-time user status updates
+  useEffect(() => {
+    if (!socket) return;
+
+    // Function to fetch chats data
+    const fetchChats = async () => {
+      try {
+        const response = await fetch('/api/users');
+        if (response.ok) {
+          const data = await response.json();
+          setChatData(data);
+        } else {
+          throw new Error('Failed to fetch chats');
+        }
+      } catch (error) {
+        console.error('Error fetching chats:', error);
+      }
+    };
+
+    const handleWebSocketMessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        // Check if the message is a user status update
+        if (data.type === "user status") {
+          // Refetch all chats data to get the latest status
+          fetchChats();
+          console.log(`Received user status update, refetching chats data`);
+        }
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+      }
+    };
+
+    // Add event listener
+    socket.addEventListener('message', handleWebSocketMessage);
+
+    // Clean up event listener
+    return () => {
+      socket.removeEventListener('message', handleWebSocketMessage);
+    };
+  }, [socket]);
 
   // Return null if user is not authenticated
   if (!user) {
