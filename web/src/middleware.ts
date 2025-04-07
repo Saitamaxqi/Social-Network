@@ -10,8 +10,8 @@ export async function middleware(request: NextRequest) {
   
   // Protected page routes that require authentication
   const protectedPageRoutes = [
-    '/posts/create',
-    '/createpost'
+    '/nothing',
+    '/else'
   ];
   
   // Check if the current path is a protected page route
@@ -39,7 +39,7 @@ export async function middleware(request: NextRequest) {
 // Configure the middleware to run on specific paths
 export const config = {
   matcher: [
-    '/posts/create',
-    '/createpost'
+    '/nothing',
+    '/else'
   ],
 };
