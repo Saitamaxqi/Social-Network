@@ -39,12 +39,18 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         throw new Error('Failed to fetch notifications');
       }
       const data = await response.json();
+      // Handle null data gracefully
+      if (data === null) {
+        setNotifications([]);
+        return;
+      }
       if (Array.isArray(data)) {
         setNotifications(data);
         setError(null);
       } else {
         setNotifications([]);
-        throw new Error('Invalid notifications data format');
+        // Just log the error instead of throwing it
+        console.warn('Invalid notifications data format');
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);

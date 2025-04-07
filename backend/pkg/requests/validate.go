@@ -78,70 +78,45 @@ func (r Rules) Validate(request *http.Request) error {
 					}
 				}
 			case "before":
+				// Handle date of birth validation to ensure users are at least 18 years old
 				if request.FormValue(field) != "" {
-					// Try to parse as datetime first
-					fieldDate, err := time.Parse("2006-01-02 15:04:05", request.FormValue(field))
+					// Parse the user-provided date
+					fieldDate, err := time.Parse("2006-01-02", request.FormValue(field))
 					if err != nil {
-						// If it fails, try to parse as date
-						fieldDate, err = time.Parse("2006-01-02", request.FormValue(field))
-						if err != nil {
-							return errors.New(field + " must be a valid date or datetime")
-						}
+						return errors.New(field + " must be a date in YYYY-MM-DD format")
 					}
 
-					// Check if value contains a relative time specification like "-18 years"
-					if strings.Contains(value, "years") || strings.Contains(value, "months") || strings.Contains(value, "days") {
-						// Parse the relative time
-						parts := strings.Split(value, " ")
-						if len(parts) != 2 {
-							return errors.New("Invalid time format in validation rule")
+					// Check if value is "now" - date must be in the past
+					if value == "now" {
+						if !fieldDate.Before(time.Now()) {
+							return errors.New(field + " must be in the past")
 						}
-
-						amount, err := strconv.Atoi(parts[0])
+					} else if strings.HasPrefix(value, "-") && strings.HasSuffix(value, "years") {
+						// Handle age validation (e.g., "-18 years")
+						// Extract the number of years
+						yearsStr := strings.TrimSuffix(strings.TrimPrefix(value, "-"), " years")
+						years, err := strconv.Atoi(yearsStr)
 						if err != nil {
-							return errors.New("Invalid time amount in validation rule")
+							return errors.New("Invalid year format in validation rule")
 						}
 
-						unit := parts[1]
-						var duration time.Duration
-						switch unit {
-						case "years":
-							duration = time.Hour * 24 * 365 * time.Duration(amount)
-						case "months":
-							duration = time.Hour * 24 * 30 * time.Duration(amount)
-						case "days":
-							duration = time.Hour * 24 * time.Duration(amount)
-						default:
-							return errors.New("Invalid time unit in validation rule")
+						// Calculate the date that is 'years' ago
+						cutoffDate := time.Now().AddDate(-years, 0, 0)
+						
+						// Check if the provided date is before the cutoff date
+						if !fieldDate.Before(cutoffDate) {
+							return errors.New(field + " indicates you must be at least " + yearsStr + " years old")
 						}
-
-						// For negative durations (e.g., "-18 years"), we need to check if the field date is before now minus the duration
-						if strings.HasPrefix(parts[0], "-") {
-							compareDate := time.Now().Add(-duration)
-							if !fieldDate.Before(compareDate) {
-								return errors.New(field + " must be before " + value + " ago")
-							}
-						} else {
-							compareDate := time.Now().Add(duration)
-							if !fieldDate.Before(compareDate) {
-								return errors.New(field + " must be before " + value + " from now")
-							}
-						}
-						return nil
-					}
-
-					// Handle absolute date comparison
-					valueDate, err := time.Parse("2006-01-02 15:04:05", value)
-					if err != nil {
-						// Try to parse as date
-						valueDate, err = time.Parse("2006-01-02", value)
+					} else {
+						// Handle regular date comparison
+						valueDate, err := time.Parse("2006-01-02", value)
 						if err != nil {
 							return errors.New("Invalid date format in validation rule")
 						}
-					}
 
-					if fieldDate.After(valueDate) {
-						return errors.New(field + " must be before " + value)
+						if fieldDate.After(valueDate) {
+							return errors.New(field + " must be before " + value)
+						}
 					}
 				}
 			case "after":
