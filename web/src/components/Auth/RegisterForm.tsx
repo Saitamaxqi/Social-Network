@@ -71,6 +71,7 @@ export default function RegisterForm() {
 
       if (!result.ok) {
         const data = await result.json();
+        // Display the specific error message from the backend
         setError(data.message || 'Registration failed');
         return;
       }

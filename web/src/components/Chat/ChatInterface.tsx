@@ -526,8 +526,8 @@ const ChatInterface: React.FC = () => {
           </div>
         ) : (
           <div className="empty-state text-white/70">
-            <div className="text-lg mb-2">No conversation selected</div>
-            <div className="text-sm">Click on a chat icon next to a user in the right sidebar to start chatting</div>
+            <div className="text-lg mb-2">No Follow relation with the selected user</div>
+            <div className="text-sm">Follow the user to start a conversation</div>
           </div>
         )}
       </div>

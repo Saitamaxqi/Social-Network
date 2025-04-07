@@ -4,10 +4,19 @@ import { useState, useEffect, useRef, FormEvent, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import MainLayout from '@/components/Layout/MainLayout';
+import { UserIcon, LockClosedIcon, GlobeAltIcon, UserGroupIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 
 interface Category {
   id: string;
   name: string;
+}
+
+interface User {
+  id: string;
+  username: string;
+  first_name?: string;
+  last_name?: string;
+  avatar?: string;
 }
 
 export default function CreatePostPage() {
@@ -23,6 +32,9 @@ export default function CreatePostPage() {
   const [visibility, setVisibility] = useState('public');
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   
   const router = useRouter();
   const { user } = useAuth();
@@ -48,7 +60,24 @@ export default function CreatePostPage() {
       }
     };
 
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch('/api/chats');
+        if (!response.ok) {
+          throw new Error('Failed to fetch users');
+        }
+        const data = await response.json();
+        // Extract users from the chats response
+        if (data && data.recentChats) {
+          setUsers(data.recentChats);
+        }
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      }
+    };
+
     fetchCategories();
+    fetchUsers();
   }, [user, router]);
 
   // Handle category selection
@@ -124,6 +153,12 @@ export default function CreatePostPage() {
       
       // Add visibility setting (default to public)
       formData.append('visibility', visibility || 'public');
+      
+      // Add allowed users for super_private posts
+      if (visibility === 'super_private' && selectedUsers.length > 0) {
+        const userIds = selectedUsers.map(user => user.id).join(',');
+        formData.append('allowed_users', userIds);
+      }
       
       console.log('Submitting post with data:', {
         title,
@@ -258,37 +293,137 @@ export default function CreatePostPage() {
                 <button
                   type="button"
                   onClick={() => setVisibility('public')}
-                  className={`px-3 py-1.5 rounded-full text-sm ${
+                  className={`flex items-center px-3 py-1.5 rounded-full text-sm ${
                     visibility === 'public'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   }`}
                 >
+                  <GlobeAltIcon className="w-4 h-4 mr-1" />
                   Public
                 </button>
                 <button
                   type="button"
                   onClick={() => setVisibility('private')}
-                  className={`px-3 py-1.5 rounded-full text-sm ${
+                  className={`flex items-center px-3 py-1.5 rounded-full text-sm ${
                     visibility === 'private'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   }`}
                 >
+                  <LockClosedIcon className="w-4 h-4 mr-1" />
                   Private
                 </button>
                 <button
                   type="button"
                   onClick={() => setVisibility('close_friends')}
-                  className={`px-3 py-1.5 rounded-full text-sm ${
+                  className={`flex items-center px-3 py-1.5 rounded-full text-sm ${
                     visibility === 'close_friends'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   }`}
                 >
+                  <UserGroupIcon className="w-4 h-4 mr-1" />
                   Close Friends
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibility('super_private')}
+                  className={`flex items-center px-3 py-1.5 rounded-full text-sm ${
+                    visibility === 'super_private'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  <ShieldCheckIcon className="w-4 h-4 mr-1" />
+                  Super Private
+                </button>
               </div>
+              
+              {/* User selection for super private posts */}
+              {visibility === 'super_private' && (
+                <div className="mt-4 p-4 bg-gray-800/50 rounded-md">
+                  <h3 className="text-sm font-medium text-gray-300 mb-2">Select users who can view this post:</h3>
+                  
+                  {/* Search input */}
+                  <div className="relative mb-3">
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Search users..."
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                    />
+                  </div>
+                  
+                  {/* Selected users */}
+                  {selectedUsers.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-xs text-gray-400 mb-2">Selected users ({selectedUsers.length}):</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedUsers.map(user => (
+                          <div 
+                            key={user.id} 
+                            className="flex items-center bg-blue-600/30 text-white px-2 py-1 rounded-md text-xs"
+                          >
+                            <span>{user.username}</span>
+                            <button 
+                              type="button" 
+                              onClick={() => setSelectedUsers(prev => prev.filter(u => u.id !== user.id))}
+                              className="ml-2 text-gray-300 hover:text-white"
+                            >
+                              &times;
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* User list */}
+                  <div className="max-h-40 overflow-y-auto bg-gray-900/50 rounded-md">
+                    {users
+                      .filter(user => {
+                        // Filter based on search term
+                        if (!searchTerm) return true;
+                        return user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                               (user.first_name && user.first_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                               (user.last_name && user.last_name.toLowerCase().includes(searchTerm.toLowerCase()));
+                      })
+                      .filter(user => !selectedUsers.some(u => u.id === user.id)) // Filter out already selected users
+                      .slice(0, 10) // Limit to first 10 results
+                      .map(user => (
+                        <div 
+                          key={user.id} 
+                          className="px-3 py-2 hover:bg-gray-800 cursor-pointer flex items-center"
+                          onClick={() => setSelectedUsers(prev => [...prev, user])}
+                        >
+                          <UserIcon className="w-4 h-4 mr-2 text-gray-400" />
+                          <span className="text-white">{user.username}</span>
+                          {(user.first_name || user.last_name) && (
+                            <span className="text-gray-400 text-xs ml-2">
+                              {user.first_name} {user.last_name}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    {searchTerm && users.filter(user => 
+                      user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      (user.first_name && user.first_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                      (user.last_name && user.last_name.toLowerCase().includes(searchTerm.toLowerCase()))
+                    ).length === 0 && (
+                      <div className="px-3 py-2 text-gray-400 text-sm">No users found</div>
+                    )}
+                  </div>
+                  
+                  {/* Warning if no users selected */}
+                  {selectedUsers.length === 0 && (
+                    <div className="mt-2 text-yellow-500 text-xs">
+                      <p>Please select at least one user who can view this post.</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             
             <div>
