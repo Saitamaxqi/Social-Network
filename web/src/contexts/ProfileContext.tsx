@@ -66,8 +66,21 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setError(null);
     
     try {
+      // Construct the API URL based on environment
+      let baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+      
+      // Special handling for Docker environment
+      // In browser, 'backend' hostname won't resolve, so we need to use localhost
+      if (typeof window !== 'undefined' && baseApiUrl.includes('http://backend:')) {
+        baseApiUrl = baseApiUrl.replace('http://backend:', 'http://localhost:');
+      }
+      
+      const apiUrl = `${baseApiUrl}/profile/${currentProfileId}`;
+      
+      console.log('Fetching profile from:', apiUrl);
+      
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/profile/${currentProfileId}`,
+        apiUrl,
         { credentials: "include" }
       );
 
