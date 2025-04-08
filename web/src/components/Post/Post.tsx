@@ -45,6 +45,9 @@ export default function Post({ groupId, scrollToPostId }: PostProps) {
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
   const [commentMediaFiles, setCommentMediaFiles] = useState<Record<string, File | null>>({});
   const [commentMediaPreviews, setCommentMediaPreviews] = useState<Record<string, string>>({});
+  
+  // Character limit for comments
+  const COMMENT_CHAR_LIMIT = 500;
   const { user } = useAuth();
   const router = useRouter();
 
@@ -221,6 +224,12 @@ export default function Post({ groupId, scrollToPostId }: PostProps) {
     if (!commentText || commentText.trim() === '') {
       return;
     }
+    
+    // Check if comment exceeds character limit
+    if (commentText.length > COMMENT_CHAR_LIMIT) {
+      alert(`Comments cannot exceed ${COMMENT_CHAR_LIMIT} characters`);
+      return;
+    }
 
     try {
       // Create form data for the request
@@ -292,10 +301,13 @@ export default function Post({ groupId, scrollToPostId }: PostProps) {
 
   // Handle comment input change
   const handleCommentChange = (postId: string, value: string) => {
-    setCommentInputs(prev => ({
-      ...prev,
-      [postId]: value
-    }));
+    // Only update if within character limit
+    if (value.length <= COMMENT_CHAR_LIMIT) {
+      setCommentInputs(prev => ({
+        ...prev,
+        [postId]: value
+      }));
+    }
   };
 
   // Handle comment media file selection
@@ -624,10 +636,10 @@ export default function Post({ groupId, scrollToPostId }: PostProps) {
               </div>
               
               {post.title && (
-                <h4 className="text-lg sm:text-xl font-medium text-white mb-2 sm:mb-3">{post.title}</h4>
+                <h4 className="text-lg sm:text-xl font-medium text-white mb-2 sm:mb-3 break-words whitespace-normal overflow-wrap-anywhere">{post.title}</h4>
               )}
               
-              <p className="text-gray-300 mb-4 sm:mb-5 text-sm sm:text-base leading-relaxed">{post.content || post.body || 'No content'}</p>
+              <p className="text-gray-300 mb-4 sm:mb-5 text-sm sm:text-base leading-relaxed break-words whitespace-normal overflow-wrap-anywhere">{post.content || post.body || 'No content'}</p>
               
               {/* Media display - always show media directly */}
               {post.media && (
@@ -746,7 +758,7 @@ export default function Post({ groupId, scrollToPostId }: PostProps) {
                                 {comment.created_at ? timeSince(comment.created_at) + ' ago' : 'Just now'}
                               </span>
                             </div>
-                            <p className="text-sm">{comment.content}</p>
+                            <p className="text-sm break-words whitespace-normal overflow-wrap-anywhere">{comment.content}</p>
                             {comment.media && (
                               <div className="mt-2">
                                 <img 
@@ -772,13 +784,19 @@ export default function Post({ groupId, scrollToPostId }: PostProps) {
                     {/* Comment input */}
                     <div className="mt-3">
                       <div className="flex flex-col space-y-2">
-                        <textarea
-                          value={commentInputs[post.id] || ''}
-                          onChange={(e) => handleCommentChange(post.id, e.target.value)}
-                          placeholder="Write a comment..."
-                          className="w-full bg-gray-700 text-white rounded p-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          rows={2}
-                        />
+                        <div className="relative">
+                          <textarea
+                            value={commentInputs[post.id] || ''}
+                            onChange={(e) => handleCommentChange(post.id, e.target.value)}
+                            placeholder="Write a comment..."
+                            className={`w-full bg-gray-700 text-white rounded p-2 text-sm resize-none focus:outline-none focus:ring-2 ${(commentInputs[post.id]?.length || 0) > COMMENT_CHAR_LIMIT * 0.9 ? 'focus:ring-yellow-500 border border-yellow-500' : 'focus:ring-blue-500'}`}
+                            rows={2}
+                            maxLength={COMMENT_CHAR_LIMIT}
+                          />
+                          <div className={`absolute bottom-1 right-2 text-xs ${(commentInputs[post.id]?.length || 0) > COMMENT_CHAR_LIMIT * 0.9 ? 'text-yellow-500' : 'text-gray-400'}`}>
+                            {(commentInputs[post.id]?.length || 0)}/{COMMENT_CHAR_LIMIT}
+                          </div>
+                        </div>
                         
                         {/* Media preview */}
                         {commentMediaPreviews[post.id] && (

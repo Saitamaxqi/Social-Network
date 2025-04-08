@@ -12,6 +12,9 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
   const [message, setMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
+  
+  // Character limit for messages
+  const MESSAGE_CHAR_LIMIT = 500;
 
   // Expanded emoji set organized by categories
   const emojiCategories = {
@@ -33,14 +36,16 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (message.trim() && !disabled) {
+    if (message.trim() && !disabled && message.length <= MESSAGE_CHAR_LIMIT) {
       onSendMessage(message);
       setMessage('');
     }
   };
 
   const addEmoji = (emoji: string) => {
-    setMessage(prev => prev + emoji);
+    if (message.length < MESSAGE_CHAR_LIMIT) {
+      setMessage(prev => prev + emoji);
+    }
     setShowEmojiPicker(false);
   };
 
@@ -265,22 +270,37 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = false }
         )}
       </div>
 
-      <input
-        type="text"
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        placeholder="Type a message..."
-        disabled={disabled}
-        style={{
-          flex: 1,
-          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-          border: 'none',
-          borderRadius: '20px',
-          padding: '10px 15px',
-          color: 'white',
-          marginRight: '10px'
-        }}
-      />
+      <div style={{ flex: 1, position: 'relative', marginRight: '10px' }}>
+        <input
+          type="text"
+          value={message}
+          onChange={(e) => {
+            if (e.target.value.length <= MESSAGE_CHAR_LIMIT) {
+              setMessage(e.target.value);
+            }
+          }}
+          placeholder="Type a message..."
+          disabled={disabled}
+          maxLength={MESSAGE_CHAR_LIMIT}
+          style={{
+            width: '100%',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            border: 'none',
+            borderRadius: '20px',
+            padding: '10px 15px',
+            color: 'white'
+          }}
+        />
+        <div style={{
+          position: 'absolute',
+          right: '10px',
+          bottom: '-20px',
+          fontSize: '12px',
+          color: message.length > MESSAGE_CHAR_LIMIT * 0.9 ? '#f87171' : 'rgba(255, 255, 255, 0.5)'
+        }}>
+          {message.length}/{MESSAGE_CHAR_LIMIT}
+        </div>
+      </div>
       
       <button 
         type="submit" 

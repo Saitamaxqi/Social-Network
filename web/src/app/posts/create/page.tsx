@@ -36,6 +36,10 @@ export default function CreatePostPage() {
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   
+  // Character limits
+  const TITLE_CHAR_LIMIT = 100;
+  const CONTENT_CHAR_LIMIT = 2000;
+  
   const router = useRouter();
   const { user } = useAuth();
 
@@ -233,30 +237,55 @@ export default function CreatePostPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-1">
-                Title (Optional)
+                Title (Optional) - {title.length}/{TITLE_CHAR_LIMIT} characters
               </label>
               <input
                 type="text"
                 id="title"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                onChange={(e) => {
+                  if (e.target.value.length <= TITLE_CHAR_LIMIT) {
+                    setTitle(e.target.value);
+                  }
+                }}
+                maxLength={TITLE_CHAR_LIMIT}
+                className={`w-full px-3 py-2 bg-gray-800 border ${title.length > TITLE_CHAR_LIMIT * 0.9 ? 'border-yellow-500' : 'border-gray-700'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white`}
                 placeholder="Enter a title for your post"
               />
+              {title.length > TITLE_CHAR_LIMIT * 0.9 && (
+                <p className="text-yellow-500 text-xs mt-1">
+                  {title.length >= TITLE_CHAR_LIMIT ? 'Character limit reached' : 'Approaching character limit'}
+                </p>
+              )}
             </div>
             
             <div>
               <label htmlFor="content" className="block text-sm font-medium text-gray-300 mb-1">
-                Content
+                Content - {content.length}/{CONTENT_CHAR_LIMIT} characters
               </label>
               <textarea
                 id="content"
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value.length <= CONTENT_CHAR_LIMIT) {
+                    setContent(e.target.value);
+                  }
+                }}
+                maxLength={CONTENT_CHAR_LIMIT}
                 rows={6}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                className={`w-full px-3 py-2 bg-gray-800 border ${content.length > CONTENT_CHAR_LIMIT * 0.9 ? 'border-yellow-500' : 'border-gray-700'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white`}
                 placeholder="What's on your mind?"
               ></textarea>
+              <div className="flex justify-between mt-1">
+                <p className={`text-xs ${content.length > CONTENT_CHAR_LIMIT * 0.9 ? 'text-yellow-500' : 'text-gray-400'}`}>
+                  {content.length >= CONTENT_CHAR_LIMIT ? 'Character limit reached' : 
+                   content.length > CONTENT_CHAR_LIMIT * 0.9 ? 'Approaching character limit' : 
+                   'Characters remaining: ' + (CONTENT_CHAR_LIMIT - content.length)}
+                </p>
+                {content.length === 0 && (
+                  <p className="text-red-500 text-xs">Content is required</p>
+                )}
+              </div>
             </div>
             
             <div>
