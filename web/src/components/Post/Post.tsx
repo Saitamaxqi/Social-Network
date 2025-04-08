@@ -526,9 +526,20 @@ export default function Post({ groupId, scrollToPostId }: PostProps) {
       filename = filename.substring(filename.indexOf('storage/') + 'storage/'.length);
     }
     
-    // Return the URL to our media API route
-    const baseUrl = window.location.origin;
-    return `${baseUrl}/api/media/${filename}`;
+    // Use the same approach as the Profile component
+    // Get the API URL from environment, with fallback
+    const baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+    
+    // Extract the base URL (without /api)
+    const baseUrl = baseApiUrl.endsWith('/api') 
+      ? baseApiUrl.substring(0, baseApiUrl.length - 4) 
+      : baseApiUrl;
+    
+    // Replace backend hostname with localhost for browser compatibility in Docker
+    const finalBaseUrl = baseUrl.replace('http://backend:', 'http://localhost:');
+    
+    // Construct the final URL
+    return `${finalBaseUrl}${mediaUrl}`;
   };
 
   if (!posts || !posts.length) {
@@ -762,7 +773,7 @@ export default function Post({ groupId, scrollToPostId }: PostProps) {
                             {comment.media && (
                               <div className="mt-2">
                                 <img 
-                                  src={comment.media.startsWith('http') ? comment.media : `http://localhost:8080${comment.media}`} 
+                                  src={formatMediaUrl(comment.media)} 
                                   alt="Comment media" 
                                   className="max-h-60 rounded object-contain"
                                   onError={(e) => {

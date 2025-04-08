@@ -198,13 +198,23 @@ export default function UsersSidebar() {
                   <div className={styles.avatarContainer}>
                     <div className={styles.avatar}>
                       {user.avatar?.Valid ? (
-                        <Image
-                          src={`http://localhost:8080${user.avatar.String}`}
-                          alt={user.username}
-                          width={32}
-                          height={32}
-                          className={styles.avatarImage}
-                        />
+                        user.avatar.String.startsWith('http') ? (
+                          <Image
+                            src={user.avatar.String}
+                            alt={user.username}
+                            width={32}
+                            height={32}
+                            className={styles.avatarImage}
+                          />
+                        ) : (
+                          <img
+                            src={`http://localhost:8080${user.avatar.String}`}
+                            alt={user.username}
+                            width={32}
+                            height={32}
+                            style={{ objectFit: 'cover', width: '100%', height: '100%', borderRadius: '50%' }}
+                          />
+                        )
                       ) : (
                         <span className={styles.avatarLetter}>{user.username[0].toUpperCase()}</span>
                       )}

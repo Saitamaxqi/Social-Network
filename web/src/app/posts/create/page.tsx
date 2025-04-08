@@ -45,10 +45,10 @@ export default function CreatePostPage() {
 
   // Fetch categories on component mount
   useEffect(() => {
-    if (!user) {
-      router.push('/auth/login');
-      return;
-    }
+    // if (!user) {
+    //   router.push('/auth/login');
+    //   return;
+    // }
 
     const fetchCategories = async () => {
       try {
