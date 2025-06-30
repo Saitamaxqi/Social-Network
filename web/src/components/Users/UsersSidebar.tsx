@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import styles from './UsersSidebar.module.css';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useGroup } from '@/contexts/GroupContext';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 
 interface ChatUser {
   id: number;
@@ -66,6 +68,12 @@ export default function UsersSidebar() {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const { currentGroupId, showGroupMembersOnly, setShowGroupMembersOnly, groupMembers } = useGroup();
+  const { socket } = useWebSocket();
+  
+  // Check if we're on a group page
+  const isGroupPage = pathname?.startsWith(`/groups/${currentGroupId}`) || false;
 
   useEffect(() => {
     if (!user) return;
@@ -92,6 +100,49 @@ export default function UsersSidebar() {
     fetchChats();
   }, [user]);
 
+  // WebSocket event listener for real-time user status updates
+  useEffect(() => {
+    if (!socket) return;
+
+    // Function to fetch chats data
+    const fetchChats = async () => {
+      try {
+        const response = await fetch('/api/users');
+        if (response.ok) {
+          const data = await response.json();
+          setChatData(data);
+        } else {
+          throw new Error('Failed to fetch chats');
+        }
+      } catch (error) {
+        console.error('Error fetching chats:', error);
+      }
+    };
+
+    const handleWebSocketMessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        // Check if the message is a user status update
+        if (data.type === "user status") {
+          // Refetch all chats data to get the latest status
+          fetchChats();
+          console.log(`Received user status update, refetching chats data`);
+        }
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+      }
+    };
+
+    // Add event listener
+    socket.addEventListener('message', handleWebSocketMessage);
+
+    // Clean up event listener
+    return () => {
+      socket.removeEventListener('message', handleWebSocketMessage);
+    };
+  }, [socket]);
+
   // Return null if user is not authenticated
   if (!user) {
     return null;
@@ -101,6 +152,11 @@ export default function UsersSidebar() {
   const navigateToChat = (userId: number) => {
     router.push(`/chats?userId=${userId}`);
   };
+
+  // Filter users based on group membership if filter is active
+  const filteredUsers = showGroupMembersOnly && isGroupPage && chatData?.recentChats
+    ? chatData.recentChats.filter(user => groupMembers.includes(user.id))
+    : chatData?.recentChats || [];
 
   return (
     <div className={styles.sidebar}>
@@ -118,15 +174,25 @@ export default function UsersSidebar() {
       </div>
 
       <div className={styles.sidebarContent}>
+        {isGroupPage && (
+          <div className={styles.filterContainer}>
+            <button 
+              className={`${styles.filterButton} ${showGroupMembersOnly ? styles.filterActive : ''}`}
+              onClick={() => setShowGroupMembersOnly(!showGroupMembersOnly)}
+            >
+              {showGroupMembersOnly ? '✓ Show Group Members' : '☐ Show Group Members'}
+            </button>
+          </div>
+        )}
         <div className={styles.userList}>
           {isLoading ? (
             <div className={styles.loadingText}>Loading users...</div>
           ) : error ? (
             <div className={styles.errorText}>{error}</div>
-          ) : !chatData?.recentChats?.length ? (
-            <div className={styles.emptyText}>No users found</div>
+          ) : !filteredUsers.length ? (
+            <div className={styles.emptyText}>{showGroupMembersOnly ? 'No group members found' : 'No users found'}</div>
           ) : (
-            chatData.recentChats.map((user) => (
+            filteredUsers.map((user) => (
               <div key={user.id} className={styles.userCard}>
                 <Link href={`/profile/${user.id}`} className={styles.userLink}>
                   <div className={styles.avatarContainer}>
@@ -145,8 +211,8 @@ export default function UsersSidebar() {
                     </div>
                     {/* Online/Offline status indicator */}
                     <div 
-                      className={`${styles.onlineStatus} ${chatData.onlineUsers[user.username] ? styles.online : styles.offline}`}
-                      title={chatData.onlineUsers[user.username] ? 'Online' : 'Offline'}
+                      className={`${styles.onlineStatus} ${chatData?.onlineUsers?.[user.username] ? styles.online : styles.offline}`}
+                      title={chatData?.onlineUsers?.[user.username] ? 'Online' : 'Offline'}
                     />
                   </div>
                   <span className={styles.username} title={user.username}>
@@ -156,12 +222,12 @@ export default function UsersSidebar() {
                 {/* Chat icon button */}
                 <div className={styles.buttonContainer}>
                   {/* Follow Button */}
-                  {chatData.followStatuses[user.username] !== undefined && (
+                  {chatData?.followStatuses?.[user.username] !== undefined && (
                     <button
                       onClick={async (e) => {
                         e.preventDefault(); // Prevent navigation
                         try {
-                          const currentStatus = chatData.followStatuses[user.username];
+                          const currentStatus = chatData?.followStatuses?.[user.username];
                           const isFollowing = currentStatus.status !== 'none';
                           
                           const formData = new FormData();
@@ -195,9 +261,9 @@ export default function UsersSidebar() {
                           console.error('Error updating follow status:', error);
                         }
                       }}
-                      className={`${styles.followButton} ${getFollowButtonStyles(chatData.followStatuses[user.username])}`}
+                      className={`${styles.followButton} ${getFollowButtonStyles(chatData?.followStatuses?.[user.username])}`}
                     >
-                      {getFollowButtonText(chatData.followStatuses[user.username])}
+                      {getFollowButtonText(chatData?.followStatuses?.[user.username])}
                     </button>
                   )}
                   {/* Chat Button */}

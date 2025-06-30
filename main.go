@@ -1,10 +1,10 @@
 package main
 
 import (
-	"forum/pkg/database"
-	"forum/pkg/env"
-	"forum/pkg/server"
-	"forum/pkg/util"
+	"social/backend/pkg/database"
+	"social/backend/pkg/env"
+	"social/backend/pkg/server"
+	"social/backend/pkg/util"
 	"log"
 )
 

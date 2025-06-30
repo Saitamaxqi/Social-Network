@@ -1,4 +1,4 @@
 .idea
-forum.sqlite3
+social.sqlite3
 web/storage
 **/*.Identifier

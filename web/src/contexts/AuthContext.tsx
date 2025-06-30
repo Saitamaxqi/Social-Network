@@ -5,7 +5,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 interface User {
   id: string;
   username?: string | null;
-  age?: number | null;
+  date_of_birth?: string | null;
   gender?: string | null;
   first_name?: string | null;
   last_name?: string | null;

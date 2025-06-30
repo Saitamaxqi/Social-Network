@@ -7,7 +7,7 @@ import Image from 'next/image';
 
 export default function RegisterForm() {
   const [username, setUsername] = useState('');
-  const [age, setAge] = useState('');
+  const [date_of_birth, setDateOfBirth] = useState('');
   const [gender, setGender] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -49,7 +49,7 @@ export default function RegisterForm() {
       if (username) {
         formData.append('username', username);
       }
-      formData.append('age', age);
+      formData.append('date_of_birth', date_of_birth);
       formData.append('gender', gender);
       formData.append('first_name', firstName);
       formData.append('last_name', lastName);
@@ -147,19 +147,28 @@ export default function RegisterForm() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="age" className="block text-sm font-medium text-gray-200 mb-2">
-                Age
+              <label htmlFor="date_of_birth" className="block text-sm font-medium text-gray-200 mb-2">
+                Date of Birth
               </label>
-              <input
-                id="age"
-                name="age"
-                type="number"
-                required
-                value={age}
-                onChange={(e) => setAge(e.target.value)}
-                className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-600 bg-black/30 backdrop-blur-sm text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Your age"
-              />
+              <div className="relative">
+                <input
+                  id="date_of_birth"
+                  name="date_of_birth"
+                  type="date"
+                  required
+                  value={date_of_birth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  className="appearance-none rounded-lg relative block w-full px-3 py-2 pl-10 border border-gray-600 bg-black/30 backdrop-blur-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  max={new Date().toISOString().split('T')[0]}
+                  onFocus={(e) => e.target.showPicker()}
+                />
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-gray-400">You must be at least 18 years old</p>
             </div>
             <div>
               <label htmlFor="gender" className="block text-sm font-medium text-gray-200 mb-2">
