@@ -168,10 +168,19 @@ const ChatInterface: React.FC = () => {
         });
         
         if (!response.ok) {
-          throw new Error('Failed to fetch messages');
+          // Just log the error and return early without throwing
+          console.warn(`Error fetching messages: ${response.status}`);
+          return;
         }
         
-        const data = await response.json();
+        // Try to parse the response as JSON, with error handling
+        let data;
+        try {
+          data = await response.json();
+        } catch (parseError) {
+          console.warn('Error parsing response as JSON:', parseError);
+          return;
+        }
         
         // Set the selected user or group from the response
         if (page === 0) {
@@ -207,6 +216,7 @@ const ChatInterface: React.FC = () => {
           }, 200); // Increased timeout to ensure rendering is complete
         }
       } catch (error) {
+        // Just log the error without changing UI state
         console.error('Error fetching messages:', error);
       } finally {
         setLoadingMessages(false);

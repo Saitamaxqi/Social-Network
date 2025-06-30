@@ -66,11 +66,44 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setError(null);
     
     try {
+      // Construct the API URL based on environment
+      let baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+      
+      // Special handling for Docker environment
+      // In browser, 'backend' hostname won't resolve, so we need to use localhost
+      if (typeof window !== 'undefined' && baseApiUrl.includes('http://backend:')) {
+        baseApiUrl = baseApiUrl.replace('http://backend:', 'http://localhost:');
+      }
+      
+      const apiUrl = `${baseApiUrl}/profile/${currentProfileId}`;
+      
+      console.log('Fetching profile from:', apiUrl);
+      
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/profile/${currentProfileId}`,
+        apiUrl,
         { credentials: "include" }
       );
 
+      // Check if the response is OK before trying to parse JSON
+      if (!response.ok) {
+        // Try to get the text of the error message
+        const errorText = await response.text();
+        
+        // Handle specific error cases
+        if (errorText.includes("Profile is private")) {
+          setError("This profile is private");
+        } else {
+          setError(errorText || `Error: ${response.status}`);
+        }
+        
+        // Clear profile data since we couldn't load it
+        setProfileData(null);
+        setStats(null);
+        setActivity(null);
+        return;
+      }
+      
+      // Now safely parse JSON since we know the response is OK
       const data = await response.json();
       
       if (data.user) {
@@ -83,8 +116,11 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         throw new Error("Invalid API response: Missing user object");
       }
     } catch (err) {
-      setError("Error loading profile data");
-      console.error(err);
+      // Only set a generic error if we haven't already set a specific one
+      if (!error) {
+        setError("Error loading profile data");
+      }
+      console.error("Profile loading error:", err);
     } finally {
       setLoading(false);
     }
